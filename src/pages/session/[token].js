@@ -83,7 +83,6 @@ export default function QRPage({ token, session }) {
 export async function getServerSideProps(context) {
   const { token } = context.params;
 
-  // 1. Fetch the session
   const { data: session, error: fetchError } = await supabase
     .from("sessions")
     .select("*")
@@ -95,8 +94,8 @@ export async function getServerSideProps(context) {
     return { notFound: true };
   }
 
-  // 2. If the session is in the initial state, update it to 'scanned'
-  if (session.state === 'init') {
+  // If the session is in a pre-scanned state, update it to 'scanned'
+  if (session.state === 'init' || session.state === 'loaded') {
     const { data: updatedSession, error: updateError } = await supabase
       .from("sessions")
       .update({ state: "scanned" })
@@ -106,13 +105,12 @@ export async function getServerSideProps(context) {
 
     if (updateError || !updatedSession) {
       console.error("Error updating session to 'scanned':", updateError);
-      return { notFound: true };
+      // Fallback to returning the original session to avoid a full error page
+      return { props: { token, session } };
     }
     
-    // Pass the newly updated session to the page
     return { props: { token, session: updatedSession } };
   }
 
-  // 3. If session was already 'scanned' or 'verified', just pass it along
   return { props: { token, session } };
 }

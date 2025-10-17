@@ -69,6 +69,17 @@
 
         const sessionToken = data.sessionToken;
 
+        // Notify the server that the QR code has been loaded and displayed
+        try {
+          await fetch(`${apiHost}/api/session/loaded`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: sessionToken }),
+          });
+        } catch (e) {
+          console.warn("QR Embed: Could not notify server of QR load.", e);
+        }
+
         const event = new CustomEvent('qrEmbedLoaded', {
           bubbles: true,
           detail: { token: sessionToken }
