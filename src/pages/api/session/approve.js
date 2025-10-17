@@ -12,14 +12,31 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Token and fingerprint are required" });
   }
 
-  const { error } = await supabase
+  // First, let's check if the session even exists.
+  const { data: session, error: fetchError } = await supabase
+    .from("sessions")
+    .select("state")
+    .eq("token", token)
+    .single();
+
+  if (fetchError || !session) {
+    console.error("Supabase fetch error on approve:", fetchError);
+    return res.status(404).json({ error: "Session not found." });
+  }
+
+  // Check if the session is in a state that can be approved.
+  if (session.state !== 'init') {
+    return res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'.` });
+  }
+
+  const { error: updateError } = await supabase
     .from("sessions")
     .update({ state: "verified", mobile_fingerprint: fingerprint })
     .eq("token", token);
 
-  if (error) {
-    console.error("Supabase update error:", error);
-    return res.status(500).json({ error: "Failed to approve session" });
+  if (updateError) {
+    console.error("Supabase update error:", updateError);
+    return res.status(500).json({ error: `Failed to approve session: ${updateError.message}` });
   }
 
   res.status(200).json({ status: "ok" });

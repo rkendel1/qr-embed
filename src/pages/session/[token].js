@@ -53,7 +53,7 @@ export default function QRPage({ token, session }) {
       setApproved(true);
     } catch (error) {
       console.error("Approval failed:", error);
-      setError(`Failed to approve the session: ${error.message}.`);
+      setError(error.message);
     }
   };
 
