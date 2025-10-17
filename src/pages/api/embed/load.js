@@ -39,8 +39,8 @@ export default async function handler(req, res) {
       .from('sessions')
       .select('token, qr_url')
       .eq('embed_id', embed.id)
-      .eq('fingerprint', fingerprint) // Corrected column name
-      .in('state', ['init', 'scanned'])
+      .eq('fingerprint', fingerprint)
+      .in('state', ['init', 'loaded', 'scanned'])
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
       token: sessionToken,
       state: "init",
       embed_id: embed.id,
-      fingerprint: fingerprint, // Corrected column name
+      fingerprint: fingerprint,
       qr_url: qrUrl,
     })
     .select()
