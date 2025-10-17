@@ -9,8 +9,6 @@ export default function Dashboard() {
   const [copied, setCopied] = useState(null); // Can be embed ID or 'embed-code'
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
   const [qrModalDataUrl, setQrModalDataUrl] = useState(null);
-  const [newSessionToken, setNewSessionToken] = useState(null);
-  const [updatedSessionToken, setUpdatedSessionToken] = useState(null);
   const [loading, setLoading] = useState({ embeds: false, sessions: false });
   const [generating, setGenerating] = useState(false);
 
@@ -142,10 +140,17 @@ export default function Dashboard() {
               <ul className="divide-y divide-gray-200">
                 {embeds.map(embed => (
                   <li key={embed.id} className="py-3">
-                    <p className="font-medium">{embed.name}</p>
-                    <button onClick={() => handleCopy(getEmbedCode(embed), `embed-code-${embed.id}`)} className="text-sm text-indigo-600 hover:underline">
-                      {copied === `embed-code-${embed.id}` ? 'Copied!' : 'Get Code'}
-                    </button>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">{embed.name}</p>
+                      <div className="flex items-center space-x-4">
+                        <a href={`/demo/${embed.id}`} target="_blank" rel="noopener noreferrer" className="text-sm text-green-600 hover:underline">
+                          View Demo
+                        </a>
+                        <button onClick={() => handleCopy(getEmbedCode(embed), `embed-code-${embed.id}`)} className="text-sm text-indigo-600 hover:underline">
+                          {copied === `embed-code-${embed.id}` ? 'Copied!' : 'Get Code'}
+                        </button>
+                      </div>
+                    </div>
                   </li>
                 ))}
               </ul>
