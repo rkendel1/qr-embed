@@ -7,6 +7,23 @@ export default function QRPage({ token, session }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // This effect runs when the page loads, indicating the QR code was scanned.
+    async function markAsScanned() {
+      try {
+        await fetch("/api/session/scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+      } catch (err) {
+        // This is a non-critical error from the user's perspective, so we just log it.
+        console.error("Failed to mark session as scanned:", err);
+      }
+    }
+    markAsScanned();
+  }, [token]);
+
+  useEffect(() => {
     async function generateFingerprint() {
       try {
         const FingerprintJS = (await import("fingerprintjs2")).default;
