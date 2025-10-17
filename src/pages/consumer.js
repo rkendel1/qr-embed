@@ -15,27 +15,25 @@ export default function ConsumerPage() {
       oldScript.remove();
     }
 
-    // Use a temporary div to parse the HTML string
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = pastedCode;
+    // Extract the div and script src using regex to avoid innerHTML parsing issues
+    const divMatch = pastedCode.match(/(<div id="qr-embed-container".*?><\/div>)/s);
+    const srcMatch = pastedCode.match(/<script.*?src=["'](.*?)["']/);
 
-    const qrContainerDiv = tempDiv.querySelector('#qr-embed-container');
-    const scriptTag = tempDiv.querySelector('script');
-
-    if (!qrContainerDiv || !scriptTag || !scriptTag.src) {
+    if (!divMatch || !divMatch[1] || !srcMatch || !srcMatch[1]) {
       embedTargetRef.current.innerHTML = '<p class="text-red-500">Invalid or incomplete embed code. Please paste the full snippet.</p>';
       return;
     }
 
+    const divHtml = divMatch[1];
+    const scriptSrc = srcMatch[1];
+
     // Append the HTML part (the div)
-    embedTargetRef.current.appendChild(qrContainerDiv);
+    embedTargetRef.current.innerHTML = divHtml;
 
     // Create and append a new script tag to make it execute
     const newScript = document.createElement('script');
-    for (let i = 0; i < scriptTag.attributes.length; i++) {
-      const attr = scriptTag.attributes[i];
-      newScript.setAttribute(attr.name, attr.value);
-    }
+    newScript.src = scriptSrc;
+    newScript.defer = true;
     newScript.id = 'qr-embed-script'; // Add an ID for easy removal later
     document.head.appendChild(newScript);
   };
