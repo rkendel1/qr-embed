@@ -54,7 +54,7 @@ export default function Dashboard() {
   }, []);
 
   const handleCreateEmbed = () => {
-    const origin = "http://192.168.1.204:3000";
+    const origin = window.location.origin;
     const code = `<div id="qr-embed-container" data-context="${context}" data-host="${origin}"></div>
 <script src="${origin}/embed.js" defer><\/script>`;
     setEmbedCode(code);
