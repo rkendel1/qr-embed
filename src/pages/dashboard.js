@@ -5,6 +5,8 @@ export default function Dashboard() {
   const [session, setSession] = useState(null);
   const [status, setStatus] = useState("Ready");
   const [qrDataUrl, setQrDataUrl] = useState(null);
+  const [embedCode, setEmbedCode] = useState(null);
+  const [copied, setCopied] = useState(false);
   const evtSourceRef = useRef(null);
   const [sessions, setSessions] = useState([]);
 
@@ -29,6 +31,8 @@ export default function Dashboard() {
     setStatus("Initializing...");
     setQrDataUrl(null);
     setSession(null);
+    setEmbedCode(null);
+    setCopied(false);
 
     if (evtSourceRef.current) {
       evtSourceRef.current.close();
@@ -58,6 +62,14 @@ export default function Dashboard() {
       setQrDataUrl(data.qrDataUrl);
       setStatus("QR Ready - Scan to connect");
       fetchSessions(); // Refresh the list
+
+      const origin = window.location.origin;
+      const code = `<div id="qr"></div>
+<script>
+  window.sessionData = ${JSON.stringify({ token: data.token, qrDataUrl: data.qrDataUrl }, null, 2)};
+<\/script>
+<script src="${origin}/embed.js" defer><\/script>`;
+      setEmbedCode(code);
 
       // SSE listener
       const evtSource = new EventSource(`/api/events?token=${data.token}`);
@@ -94,6 +106,14 @@ export default function Dashboard() {
         {state}
       </p>
     );
+  };
+
+  const handleCopy = () => {
+    if (embedCode) {
+      navigator.clipboard.writeText(embedCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (
@@ -151,6 +171,21 @@ export default function Dashboard() {
                 )
               )}
             </div>
+            {embedCode && (
+              <div className="mt-6">
+                <h4 className="text-md font-medium text-gray-900 mb-2">Embed Code</h4>
+                <p className="text-sm text-gray-500 mb-2">Copy and paste this snippet into your website's HTML.</p>
+                <div className="relative bg-gray-800 rounded-md p-4 text-white font-mono text-sm overflow-x-auto">
+                  <button
+                    onClick={handleCopy}
+                    className="absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-white font-sans text-xs font-bold py-1 px-2 rounded"
+                  >
+                    {copied ? "Copied!" : "Copy"}
+                  </button>
+                  <pre><code>{embedCode}</code></pre>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
