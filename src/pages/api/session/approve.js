@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -12,7 +13,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Token and fingerprint are required" });
   }
 
-  // First, let's check if the session even exists.
+  // First, let's check if the session even exists using the public client.
   const { data: session, error: fetchError } = await supabase
     .from("sessions")
     .select("state")
@@ -29,7 +30,8 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'.` });
   }
 
-  const { data: updatedSession, error: updateError } = await supabase
+  // Use the admin client to perform the update.
+  const { data: updatedSession, error: updateError } = await supabaseAdmin
     .from("sessions")
     .update({ state: "verified", mobile_fingerprint: fingerprint })
     .eq("token", token)
