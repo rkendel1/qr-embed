@@ -78,7 +78,7 @@ export default async function handler(req, res) {
     .from("sessions")
     .insert({
       token: sessionToken,
-      state: "init",
+      state: "loaded", // Create in "loaded" state directly
       embed_id: embed.id,
       fingerprint: fingerprint,
       qr_url: qrUrl,
