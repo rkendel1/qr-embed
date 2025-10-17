@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [copiedToken, setCopiedToken] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
   const [newSessionToken, setNewSessionToken] = useState(null);
+  const [updatedSessionToken, setUpdatedSessionToken] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleGenerateCode = useCallback(() => {
@@ -84,6 +85,8 @@ export default function Dashboard() {
                 s.token === payload.new.token ? payload.new : s
               )
             );
+            setUpdatedSessionToken(payload.new.token); // Highlight updated session
+            setTimeout(() => setUpdatedSessionToken(null), 5000); // Remove highlight
           }
         }
       )
@@ -189,7 +192,7 @@ export default function Dashboard() {
             <div className="bg-white shadow overflow-hidden sm:rounded-md">
               <ul className="divide-y divide-gray-200">
                 {sessions.length > 0 ? sessions.map((s) => (
-                  <li key={s.token} className={`transition-colors duration-1000 ${s.token === newSessionToken ? 'bg-indigo-50' : 'bg-white'}`}>
+                  <li key={s.token} className={`transition-colors duration-1000 ${s.token === newSessionToken ? 'bg-indigo-50' : s.token === updatedSessionToken ? 'bg-green-50' : 'bg-white'}`}>
                     <div className="px-4 py-4 sm:px-6">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-indigo-600 truncate">
