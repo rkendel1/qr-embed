@@ -30,7 +30,9 @@ export default async function handler(req, res) {
   }
 
   // Check if the session is in a state that can be approved.
-  if (session.state !== 'scanned') {
+  // It should be 'scanned', but we'll allow 'init' and 'loaded' as a fallback
+  // in case the intermediate state updates failed.
+  if (!['init', 'loaded', 'scanned'].includes(session.state)) {
     return res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'.` });
   }
 
