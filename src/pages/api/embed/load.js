@@ -1,7 +1,6 @@
 import QRCode from "qrcode";
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
-import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,30 +21,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Template token and fingerprint are required" });
   }
 
-  const jwtSecret = process.env.JWT_SECRET;
-  if (!jwtSecret) {
-    console.error("JWT_SECRET is not set in environment variables.");
-    return res.status(500).json({ error: "Server configuration error." });
-  }
-
-  let embedId;
-  try {
-    const decoded = jwt.verify(templateToken, jwtSecret);
-    embedId = decoded.embedId;
-    if (!embedId) throw new Error("Token is missing embedId");
-  } catch (error) {
-    console.error("JWT verification failed:", error);
-    return res.status(401).json({ error: "Invalid or expired token." });
-  }
-
-  // Verify the embed exists
+  // Verify the embed exists by looking up the template token
   const { data: embed, error: embedError } = await supabase
     .from('embeds')
     .select('id')
-    .eq('id', embedId)
+    .eq('template_token', templateToken)
     .single();
 
   if (embedError || !embed) {
+    console.error("Embed lookup failed:", embedError);
     return res.status(404).json({ error: "Embed configuration not found." });
   }
 
@@ -66,7 +50,7 @@ export default async function handler(req, res) {
     .insert({
       token: sessionToken,
       state: "init",
-      embed_id: embedId, // Use the foreign key
+      embed_id: embed.id, // Use the foreign key
       embed_fingerprint: fingerprint,
       qr_url: qrUrl,
     });

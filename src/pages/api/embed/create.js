@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/lib/supabase';
 
 export default async function handler(req, res) {
@@ -11,40 +11,18 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Embed name is required" });
   }
 
-  const jwtSecret = process.env.JWT_SECRET;
-  if (!jwtSecret) {
-    console.error("JWT_SECRET is not set in environment variables.");
-    return res.status(500).json({ error: "Server configuration error." });
-  }
+  const templateToken = uuidv4();
 
-  // Insert into the new embeds table first
-  const { data: embedData, error: insertError } = await supabase
+  const { data, error } = await supabase
     .from('embeds')
-    .insert({ name, template_token: 'temp' }) // temp token first
+    .insert({ name, template_token: templateToken })
     .select()
     .single();
 
-  if (insertError) {
-    console.error("Supabase insert error on embed create:", insertError);
+  if (error) {
+    console.error("Supabase insert error on embed create:", error);
     return res.status(500).json({ error: "Failed to create embed." });
   }
 
-  // Now create a token that contains the ID of the new embed
-  const templateToken = jwt.sign({ embedId: embedData.id }, jwtSecret);
-
-  // Update the row with the final token
-  const { data: updatedData, error: updateError } = await supabase
-    .from('embeds')
-    .update({ template_token: templateToken })
-    .eq('id', embedData.id)
-    .select()
-    .single();
-  
-  if (updateError) {
-    console.error("Supabase update error on embed create:", updateError);
-    // Here you might want to delete the previously inserted row for cleanup
-    return res.status(500).json({ error: "Failed to finalize embed." });
-  }
-
-  res.status(201).json(updatedData);
+  res.status(201).json(data);
 }

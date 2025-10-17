@@ -1,29 +1,37 @@
 (async () => {
-  const qrContainer = document.getElementById("qr-embed-container");
-  if (!qrContainer) {
-    console.error("QR Embed: Container with id 'qr-embed-container' not found.");
+  const script = document.currentScript;
+  if (!script) {
+    console.error("QR Embed: Could not find the executing script tag.");
     return;
   }
 
-  const templateToken = qrContainer.dataset.token;
-  const apiHost = qrContainer.dataset.host;
+  const qrContainer = document.createElement('div');
+  qrContainer.style.fontFamily = 'sans-serif';
+  qrContainer.style.color = '#555';
+  script.parentNode.insertBefore(qrContainer, script);
+
+  const templateToken = script.dataset.token;
+  const apiHost = script.dataset.host;
 
   if (!apiHost) {
-    console.error("QR Embed: 'data-host' attribute is missing from the container.");
+    console.error("QR Embed: 'data-host' attribute is missing from the script tag.");
+    qrContainer.innerText = "Configuration error.";
     return;
   }
 
   if (!templateToken) {
-    console.error("QR Embed: 'data-token' attribute is missing from the container.");
+    console.error("QR Embed: 'data-token' attribute is missing from the script tag.");
+    qrContainer.innerText = "Configuration error.";
     return;
   }
 
   function showLoading() {
-    qrContainer.innerHTML = '<p style="font-family: sans-serif; color: #555;">Loading QR Code...</p>';
+    qrContainer.innerText = 'Loading QR Code...';
   }
 
   function showError(message) {
-    qrContainer.innerHTML = `<p style="font-family: sans-serif; color: #c00;">${message}</p>`;
+    qrContainer.style.color = '#c00';
+    qrContainer.innerText = message;
   }
 
   function displayQR(qrDataUrl) {
@@ -39,9 +47,9 @@
     showLoading();
 
     // Dynamically import fingerprintjs2
-    const script = document.createElement('script');
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/fingerprintjs2/2.1.4/fingerprint2.min.js";
-    script.onload = async () => {
+    const fpScript = document.createElement('script');
+    fpScript.src = "https://cdnjs.cloudflare.com/ajax/libs/fingerprintjs2/2.1.4/fingerprint2.min.js";
+    fpScript.onload = async () => {
       try {
         const components = await Fingerprint2.getPromise();
         const fingerprint = components.map(c => c.value).join("");
@@ -61,14 +69,12 @@
 
         const sessionToken = data.sessionToken;
 
-        // Dispatch a custom event with the new session token
         const event = new CustomEvent('qrEmbedLoaded', {
           bubbles: true,
           detail: { token: sessionToken }
         });
         qrContainer.dispatchEvent(event);
 
-        // Set up SSE for real-time status updates using the new session token
         const evtSource = new EventSource(`${apiHost}/api/events?token=${sessionToken}`);
         evtSource.onmessage = (e) => {
           const event = JSON.parse(e.data);
@@ -87,7 +93,7 @@
         showError("Could not load QR Code.");
       }
     };
-    document.head.appendChild(script);
+    document.head.appendChild(fpScript);
 
   } catch (error) {
     console.error("QR Embed Error:", error);
