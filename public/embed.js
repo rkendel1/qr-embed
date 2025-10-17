@@ -5,11 +5,16 @@
     return;
   }
 
-  const context = qrContainer.dataset.context || "default";
+  const token = qrContainer.dataset.token;
   const apiHost = qrContainer.dataset.host;
 
   if (!apiHost) {
     console.error("QR Embed: 'data-host' attribute is missing from the container.");
+    return;
+  }
+
+  if (!token) {
+    console.error("QR Embed: 'data-token' attribute is missing from the container.");
     return;
   }
 
@@ -41,14 +46,14 @@
         const components = await Fingerprint2.getPromise();
         const fingerprint = components.map(c => c.value).join("");
 
-        const res = await fetch(`${apiHost}/api/embed/init`, {
+        const res = await fetch(`${apiHost}/api/embed/load`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fingerprint, context }),
+          body: JSON.stringify({ token, fingerprint }),
         });
 
         if (!res.ok) {
-          throw new Error("Failed to initialize session.");
+          throw new Error("Failed to load session.");
         }
 
         const data = await res.json();
@@ -56,13 +61,13 @@
 
         // Dispatch a custom event with the session token
         const event = new CustomEvent('qrEmbedLoaded', {
-          bubbles: true, // Ensure the event can be caught by parent elements
-          detail: { token: data.token }
+          bubbles: true,
+          detail: { token: token }
         });
         qrContainer.dispatchEvent(event);
 
         // Optional: Set up SSE for real-time status updates on the embedded page
-        const evtSource = new EventSource(`${apiHost}/api/events?token=${data.token}`);
+        const evtSource = new EventSource(`${apiHost}/api/events?token=${token}`);
         evtSource.onmessage = (e) => {
           const event = JSON.parse(e.data);
           if (event.state === "verified") {
@@ -71,7 +76,6 @@
           }
         };
         evtSource.onerror = () => {
-          // You might want to handle SSE errors, maybe just log them
           console.error("SSE connection error.");
           evtSource.close();
         };

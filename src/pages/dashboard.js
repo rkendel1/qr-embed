@@ -12,21 +12,37 @@ export default function Dashboard() {
   const [newSessionToken, setNewSessionToken] = useState(null);
   const [updatedSessionToken, setUpdatedSessionToken] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
-  const handleGenerateCode = useCallback(() => {
-    const origin = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-    const code = `<div id="qr-embed-container" data-context="${context}" data-host="${origin}"></div>
+  const handleGenerateCode = async () => {
+    setGenerating(true);
+    setEmbedCode('');
+    try {
+      const res = await fetch('/api/session/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to create session');
+      }
+
+      const newSession = await res.json();
+      const origin = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      const code = `<div id="qr-embed-container" data-token="${newSession.token}" data-host="${origin}"></div>
 <script src="${origin}/embed.js" defer><\/script>`;
-    setEmbedCode(code);
-    setCopied(false);
-  }, [context]);
+      setEmbedCode(code);
+      setCopied(false);
+    } catch (error) {
+      console.error("Error generating embed code:", error);
+      setEmbedCode(`<p class="text-red-500">Error: ${error.message}</p>`);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
-  // Generate initial embed code on component mount
-  useEffect(() => {
-    handleGenerateCode();
-  }, [handleGenerateCode]);
-
-  // Generate QR code data URL when a session's QR URL is selected
   useEffect(() => {
     if (qrCodeUrl) {
       QRCode.toDataURL(qrCodeUrl, { width: 256 })
@@ -62,12 +78,10 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Initial fetch for sessions
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
 
-  // Real-time subscription for session changes
   useEffect(() => {
     const channel = supabase
       .channel('sessions-realtime')
@@ -77,16 +91,16 @@ export default function Dashboard() {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setSessions(currentSessions => [payload.new, ...currentSessions]);
-            setNewSessionToken(payload.new.token); // Highlight the new session
-            setTimeout(() => setNewSessionToken(null), 5000); // Remove highlight after 5 seconds
+            setNewSessionToken(payload.new.token);
+            setTimeout(() => setNewSessionToken(null), 5000);
           } else if (payload.eventType === 'UPDATE') {
             setSessions(currentSessions =>
               currentSessions.map(s =>
                 s.token === payload.new.token ? payload.new : s
               )
             );
-            setUpdatedSessionToken(payload.new.token); // Highlight updated session
-            setTimeout(() => setUpdatedSessionToken(null), 5000); // Remove highlight
+            setUpdatedSessionToken(payload.new.token);
+            setTimeout(() => setUpdatedSessionToken(null), 5000);
           }
         }
       )
@@ -110,9 +124,10 @@ export default function Dashboard() {
 
   const StatusPill = ({ state }) => {
     const stateStyles = {
-      init: "bg-gray-100 text-gray-800",
+      pending: "bg-yellow-100 text-yellow-800",
+      init: "bg-blue-100 text-blue-800",
       verified: "bg-green-100 text-green-800",
-      default: "bg-yellow-100 text-yellow-800",
+      default: "bg-gray-100 text-gray-800",
     };
     const style = stateStyles[state] || stateStyles.default;
     return (
@@ -124,7 +139,6 @@ export default function Dashboard() {
 
   return (
     <>
-      {/* QR Code Modal */}
       <div id="qr-modal" className="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" onClick={() => setQrCodeUrl(null)}>
         <div className="bg-white p-4 rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()}>
           <img src="" alt="QR Code" />
@@ -140,7 +154,7 @@ export default function Dashboard() {
         </header>
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Your Embed Code</h2>
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Generate Embed Code</h2>
             <div className="flex-grow mb-4">
               <label htmlFor="context" className="block text-sm font-medium text-gray-700">
                 Embed Context
@@ -156,14 +170,15 @@ export default function Dashboard() {
                 />
                 <button
                   onClick={handleGenerateCode}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-r-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  disabled={generating}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-r-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400"
                 >
-                  Generate
+                  {generating ? 'Generating...' : 'Generate'}
                 </button>
               </div>
             </div>
             <p className="text-sm text-gray-500 mb-4">
-              Paste this snippet into your website. A new session will be created and highlighted below as soon as a user visits the page.
+              Click "Generate" to create a new session and get your embed code. A new session will appear below with a "pending" status.
             </p>
             {embedCode && (
               <div className="relative bg-gray-800 rounded-md p-4 text-white font-mono text-sm overflow-x-auto">
@@ -210,7 +225,7 @@ export default function Dashboard() {
                         </div>
                         <div className="text-sm text-gray-500 overflow-hidden">
                           <p className="truncate">
-                            {s.state === 'verified' ? 'Mobile FP' : 'Device FP'}: <code className="text-xs bg-gray-100 p-1 rounded">{s.fingerprint}</code>
+                            {s.state === 'verified' ? 'Mobile FP' : 'Device FP'}: <code className="text-xs bg-gray-100 p-1 rounded">{s.fingerprint || 'N/A'}</code>
                           </p>
                         </div>
                       </div>
@@ -220,14 +235,16 @@ export default function Dashboard() {
                             {new Date(s.created_at).toLocaleString()}
                           </p>
                         </div>
-                        <button onClick={() => setQrCodeUrl(s.qr_url)} className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
-                          Show QR Code
-                        </button>
+                        {s.state !== 'pending' && (
+                          <button onClick={() => setQrCodeUrl(s.qr_url)} className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                            Show QR Code
+                          </button>
+                        )}
                       </div>
                     </div>
                   </li>
                 )) : (
-                  <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">No active sessions. Paste your embed code on a site to see a session appear here.</li>
+                  <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">No active sessions. Generate an embed code to see a session appear here.</li>
                 )}
               </ul>
             </div>

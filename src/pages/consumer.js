@@ -29,17 +29,14 @@ export default function ConsumerPage() {
   const handleLoadEmbed = () => {
     if (!pastedCode || !embedTargetRef.current) return;
 
-    // Reset session ID when loading a new embed
     setSessionId(null);
 
-    // Clear previous content and remove the old script if it exists
     embedTargetRef.current.innerHTML = '';
     const oldScript = document.getElementById('qr-embed-script');
     if (oldScript) {
       oldScript.remove();
     }
 
-    // Extract the div and script src using regex to avoid innerHTML parsing issues
     const divMatch = pastedCode.match(/(<div id="qr-embed-container".*?><\/div>)/s);
     const srcMatch = pastedCode.match(/<script.*?src=["'](.*?)["']/);
 
@@ -51,14 +48,12 @@ export default function ConsumerPage() {
     const divHtml = divMatch[1];
     const scriptSrc = srcMatch[1];
 
-    // Append the HTML part (the div)
     embedTargetRef.current.innerHTML = divHtml;
 
-    // Create and append a new script tag to make it execute
     const newScript = document.createElement('script');
     newScript.src = scriptSrc;
     newScript.defer = true;
-    newScript.id = 'qr-embed-script'; // Add an ID for easy removal later
+    newScript.id = 'qr-embed-script';
     document.head.appendChild(newScript);
   };
 
@@ -86,7 +81,7 @@ export default function ConsumerPage() {
               className="w-full h-32 p-3 bg-gray-800 text-green-400 font-mono text-sm border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={pastedCode}
               onChange={(e) => setPastedCode(e.target.value)}
-              placeholder='<div id="qr-embed-container" data-context="..." data-host="..."></div>\n<script src=".../embed.js" defer></script>'
+              placeholder='<div id="qr-embed-container" data-token="..." data-host="..."></div>\n<script src=".../embed.js" defer></script>'
             />
             <button
               onClick={handleLoadEmbed}
