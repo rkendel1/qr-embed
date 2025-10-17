@@ -86,8 +86,9 @@ export default function QRPage({ token, session }) {
 
 export async function getServerSideProps(context) {
   const { token } = context.params;
+  const { req } = context;
 
-  const { data: session, error: fetchError } = await supabase
+  let { data: session, error: fetchError } = await supabase
     .from("sessions")
     .select("*")
     .eq("token", token)
@@ -98,22 +99,44 @@ export async function getServerSideProps(context) {
     return { notFound: true };
   }
 
-  // If the session is in a pre-scanned state, update it to 'scanned'
+  // If the session is in a pre-scanned state, update it to 'scanned' via an API route
   if (session.state === 'init' || session.state === 'loaded') {
-    const { data: updatedSession, error: updateError } = await supabase
-      .from("sessions")
-      .update({ state: "scanned", scanned_at: new Date().toISOString() })
-      .eq("token", token)
-      .select()
-      .single();
+    try {
+      const getOrigin = () => {
+        if (process.env.NEXT_PUBLIC_APP_URL) {
+          return process.env.NEXT_PUBLIC_APP_URL;
+        }
+        const protocol = req.headers['x-forwarded-proto'] || 'http';
+        const host = req.headers.host;
+        return `${protocol}://${host}`;
+      };
+      const origin = getOrigin();
+      const scanApiUrl = `${origin}/api/session/scan`;
 
-    if (updateError || !updatedSession) {
-      console.error("Error updating session to 'scanned':", updateError);
-      // Fallback to returning the original session to avoid a full error page
-      return { props: { token, session } };
+      const res = await fetch(scanApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Error updating session to 'scanned':", errorData.error || 'API call failed');
+      } else {
+        // If successful, refetch the session to get the updated data
+        const { data: updatedSession, error: refetchError } = await supabase
+          .from("sessions")
+          .select("*")
+          .eq("token", token)
+          .single();
+        
+        if (!refetchError && updatedSession) {
+          session = updatedSession;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to call scan API:", e);
     }
-    
-    return { props: { token, session: updatedSession } };
   }
 
   return { props: { token, session } };
