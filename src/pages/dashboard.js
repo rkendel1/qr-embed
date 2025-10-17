@@ -142,7 +142,7 @@ export default function Dashboard() {
                     <div className="flex justify-between items-center">
                       <p className="font-medium">{embed.name}</p>
                       <div className="flex items-center space-x-4">
-                        <a href={`/demo/${embed.id}`} target="_blank" rel="noopener noreferrer" className="text-sm text-green-600 hover:underline">
+                        <a href={`/demo/${embed.template_token}`} target="_blank" rel="noopener noreferrer" className="text-sm text-green-600 hover:underline">
                           View Demo
                         </a>
                         <button onClick={() => handleCopy(getEmbedCode(embed), `embed-code-${embed.id}`)} className="text-sm text-indigo-600 hover:underline">

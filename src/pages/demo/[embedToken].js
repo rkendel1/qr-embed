@@ -59,17 +59,17 @@ export default function DemoPage({ embed, origin }) {
 }
 
 export async function getServerSideProps(context) {
-  const { embedId } = context.params;
+  const { embedToken } = context.params;
   const { req } = context;
 
-  if (!embedId || isNaN(parseInt(embedId))) {
+  if (!embedToken) {
     return { notFound: true };
   }
 
   const { data: embed, error } = await supabase
     .from("embeds")
     .select("id, name, template_token")
-    .eq("id", embedId)
+    .eq("template_token", embedToken)
     .single();
 
   if (error || !embed) {
