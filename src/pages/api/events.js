@@ -1,7 +1,11 @@
 import { supabase } from "@/lib/supabase";
 
 export default async function handler(req, res) {
+  // Handle OPTIONS preflight request for CORS
   if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(200).end();
   }
 
@@ -23,10 +27,12 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Set headers for the SSE stream, including the crucial CORS header
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
-    Connection: "keep-alive",
+    "Connection": "keep-alive",
+    "Access-Control-Allow-Origin": "*",
   });
 
   // Send the initial state immediately

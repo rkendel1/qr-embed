@@ -3,6 +3,11 @@ import QRCode from "qrcode";
 import { supabase } from "@/lib/supabase";
 
 export default async function handler(req, res) {
+  // Set CORS headers for all responses from this endpoint
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
