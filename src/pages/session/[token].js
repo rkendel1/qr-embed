@@ -45,16 +45,29 @@ export default function QRPage({ token, session, sessionError }) {
       setApproved(true);
     } catch (error) {
       console.error("Approval failed:", error);
-      setError(error.message);
+      if (error.message && error.message.includes("SUPABASE_SERVICE_KEY")) {
+        setError("Could not approve connection due to a server configuration issue. Please contact support.");
+      } else {
+        setError(error.message);
+      }
     }
   };
+
+  const getDisplayError = () => {
+    if (!error) return null;
+    if (error.includes("SUPABASE_SERVICE_KEY")) {
+      return "Could not connect due to a server configuration issue. Please contact support.";
+    }
+    return error;
+  }
+  const displayError = getDisplayError();
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="p-8 bg-white rounded-lg shadow-md text-center max-w-sm w-full">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Approve Connection?</h2>
-        {error ? (
-          <p className="text-red-600 bg-red-50 p-3 rounded-md">{error}</p>
+        {displayError ? (
+          <p className="text-red-600 bg-red-50 p-3 rounded-md">{displayError}</p>
         ) : approved ? (
           <p className="text-green-600">Approved! You can close this window.</p>
         ) : (
