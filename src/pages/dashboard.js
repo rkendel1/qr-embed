@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export default function Dashboard() {
   const [context, setContext] = useState("marketing");
@@ -6,6 +6,24 @@ export default function Dashboard() {
   const [status, setStatus] = useState("Ready");
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const evtSourceRef = useRef(null);
+  const [sessions, setSessions] = useState([]);
+
+  const fetchSessions = async () => {
+    try {
+      const res = await fetch("/api/session/list");
+      if (!res.ok) {
+        throw new Error("Failed to fetch sessions");
+      }
+      const data = await res.json();
+      setSessions(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSessions();
+  }, []);
 
   const handleCreateEmbed = async () => {
     setStatus("Initializing...");
@@ -39,6 +57,7 @@ export default function Dashboard() {
       setSession(data);
       setQrDataUrl(data.qrDataUrl);
       setStatus("QR Ready - Scan to connect");
+      fetchSessions(); // Refresh the list
 
       // SSE listener
       const evtSource = new EventSource(`/api/events?token=${data.token}`);
@@ -61,6 +80,20 @@ export default function Dashboard() {
       console.error("Error creating embed:", error);
       setStatus(`Error: ${error.message}`);
     }
+  };
+
+  const StatusPill = ({ state }) => {
+    const stateStyles = {
+      init: "bg-gray-100 text-gray-800",
+      verified: "bg-green-100 text-green-800",
+      default: "bg-yellow-100 text-yellow-800",
+    };
+    const style = stateStyles[state] || stateStyles.default;
+    return (
+      <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${style}`}>
+        {state}
+      </p>
+    );
   };
 
   return (
@@ -98,7 +131,7 @@ export default function Dashboard() {
 
         {status !== "Ready" && (
           <div className="mt-8 bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Session Details</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">New Session Details</h3>
             <p className="text-sm text-gray-600 mb-4">
               Status: <span className="font-semibold">{status}</span>
             </p>
@@ -120,6 +153,42 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        <div className="mt-8">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Existing Sessions</h3>
+          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <ul className="divide-y divide-gray-200">
+              {sessions.length > 0 ? sessions.map((s) => (
+                <li key={s.token}>
+                  <div className="px-4 py-4 sm:px-6">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-indigo-600 truncate">
+                        Context: {s.context}
+                      </p>
+                      <div className="ml-2 flex-shrink-0 flex">
+                        <StatusPill state={s.state} />
+                      </div>
+                    </div>
+                    <div className="mt-2 sm:flex sm:justify-between">
+                      <div className="sm:flex">
+                        <p className="flex items-center text-sm text-gray-500">
+                          <code className="text-xs bg-gray-100 p-1 rounded">{s.token}</code>
+                        </p>
+                      </div>
+                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                        <p>
+                          {new Date(s.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              )) : (
+                <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">No sessions found.</li>
+              )}
+            </ul>
+          </div>
+        </div>
       </main>
     </div>
   );
