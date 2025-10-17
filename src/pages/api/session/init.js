@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { fingerprint } = req.body;
+  const { fingerprint, context = "marketing" } = req.body;
   const token = uuidv4();
   const qrUrl = `${req.headers.origin}/session/${token}`;
 
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     token,
     fingerprint,
     state: "init",
-    context: "marketing",
+    context: context,
     qr_url: qrUrl,
   });
 
