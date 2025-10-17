@@ -53,7 +53,11 @@ export default function QRPage({ token, session }) {
       setApproved(true);
     } catch (error) {
       console.error("Approval failed:", error);
-      setError(error.message);
+      if (error.message && error.message.includes("SUPABASE_SERVICE_KEY")) {
+        setError("Could not approve connection due to a server configuration issue. Please contact support.");
+      } else {
+        setError(error.message);
+      }
     }
   };
 

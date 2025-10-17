@@ -80,6 +80,9 @@
         });
 
         if (!res.ok) {
+          if (res.status === 403) {
+            throw new Error("This QR code is no longer active. Please contact the website owner for assistance.");
+          }
           const errorData = await res.json().catch(() => ({}));
           throw new Error(errorData.error || "Failed to load session.");
         }
