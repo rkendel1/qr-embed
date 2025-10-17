@@ -2,9 +2,6 @@ import { supabase } from "@/lib/supabase";
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(200).end();
   }
 
@@ -29,7 +26,6 @@ export default async function handler(req, res) {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     "Connection": "keep-alive",
-    "Access-Control-Allow-Origin": "*",
   });
 
   console.log(`SSE connection established for token: ${token}`);
