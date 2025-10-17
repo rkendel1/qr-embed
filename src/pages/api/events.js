@@ -1,7 +1,6 @@
 import { supabase } from "@/lib/supabase";
 
 export default async function handler(req, res) {
-  // Handle OPTIONS preflight request for CORS
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -15,7 +14,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Token is required" });
   }
 
-  // Initial check to see if session exists
   const { data: initialSession, error: initialError } = await supabase
     .from("sessions")
     .select("token, state")
@@ -27,7 +25,6 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Set headers for the SSE stream, including the crucial CORS header
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
@@ -35,9 +32,15 @@ export default async function handler(req, res) {
     "Access-Control-Allow-Origin": "*",
   });
 
-  // Send the initial state immediately
+  console.log(`SSE connection established for token: ${token}`);
+
   res.write(`data: ${JSON.stringify({ state: initialSession.state })}\n\n`);
   res.flush();
+
+  const heartbeatInterval = setInterval(() => {
+    res.write(':heartbeat\n\n');
+    res.flush();
+  }, 15000);
 
   const channel = supabase
     .channel(`session-updates-${token}`)
@@ -58,11 +61,14 @@ export default async function handler(req, res) {
     .subscribe((status, err) => {
       if (err) {
         console.error(`Subscription error for token ${token}:`, err);
+        clearInterval(heartbeatInterval);
+        res.end();
       }
     });
 
   req.on("close", () => {
-    console.log(`Client disconnected for token ${token}. Unsubscribing.`);
+    console.log(`Client disconnected for token ${token}. Cleaning up.`);
+    clearInterval(heartbeatInterval);
     supabase.removeChannel(channel);
   });
 }
