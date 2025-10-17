@@ -30,6 +30,12 @@ export default function Dashboard() {
       }
 
       const newSession = await res.json();
+      
+      // Manually add the new session for instant UI update
+      setSessions(currentSessions => [newSession, ...currentSessions]);
+      setNewSessionToken(newSession.token);
+      setTimeout(() => setNewSessionToken(null), 5000);
+
       const origin = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
       const code = `<div id="qr-embed-container" data-token="${newSession.token}" data-host="${origin}"></div>
 <script src="${origin}/embed.js" defer><\/script>`;
@@ -90,7 +96,13 @@ export default function Dashboard() {
         { event: '*', schema: 'public', table: 'sessions' },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            setSessions(currentSessions => [payload.new, ...currentSessions]);
+            setSessions(currentSessions => {
+              // Prevent duplicates if session was already added manually
+              if (currentSessions.some(s => s.token === payload.new.token)) {
+                return currentSessions;
+              }
+              return [payload.new, ...currentSessions];
+            });
             setNewSessionToken(payload.new.token);
             setTimeout(() => setNewSessionToken(null), 5000);
           } else if (payload.eventType === 'UPDATE') {
