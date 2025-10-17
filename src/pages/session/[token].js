@@ -99,7 +99,7 @@ export async function getServerSideProps(context) {
   if (session.state === 'init' || session.state === 'loaded') {
     const { data: updatedSession, error: updateError } = await supabaseAdmin
       .from("sessions")
-      .update({ state: "scanned" })
+      .update({ state: "scanned", scanned_at: new Date().toISOString() })
       .eq("token", token)
       .select()
       .single();

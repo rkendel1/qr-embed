@@ -33,7 +33,7 @@ export default async function handler(req, res) {
   // Use the admin client to perform the update.
   const { data: updatedSession, error: updateError } = await supabaseAdmin
     .from("sessions")
-    .update({ state: "verified", mobile_fingerprint: fingerprint })
+    .update({ state: "verified", mobile_fingerprint: fingerprint, verified_at: new Date().toISOString() })
     .eq("token", token)
     .select()
     .single();
