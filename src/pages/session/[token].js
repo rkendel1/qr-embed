@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function QRPage({ token, session }) {
   const [approved, setApproved] = useState(false);
@@ -31,13 +32,18 @@ export default function QRPage({ token, session }) {
 }
 
 export async function getServerSideProps(context) {
-  const sessionModule = await import("../api/session/sessions");
-  const { sessions } = sessionModule;
-  const token = context.params.token;
+  const { token } = context.params;
 
-  if (!sessions.get(token)) {
+  const { data: session, error } = await supabase
+    .from("sessions")
+    .select("*")
+    .eq("token", token)
+    .single();
+
+  if (error || !session) {
+    console.error("Error fetching session:", error);
     return { notFound: true };
   }
 
-  return { props: { token, session: sessions.get(token) } };
+  return { props: { token, session } };
 }

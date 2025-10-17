@@ -1,10 +1,16 @@
-import { sessions } from "./session/sessions";
+import { supabase } from "@/lib/supabase";
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   const { token } = req.query;
-  const session = sessions.get(token);
 
-  if (!session) {
+  // Initial check to see if session exists
+  const { data: initialSession, error: initialError } = await supabase
+    .from("sessions")
+    .select("token")
+    .eq("token", token)
+    .single();
+
+  if (initialError || !initialSession) {
     res.status(404).end();
     return;
   }
@@ -15,8 +21,18 @@ export default function handler(req, res) {
     Connection: "keep-alive",
   });
 
-  const interval = setInterval(() => {
-    const currentSession = sessions.get(token);
+  const interval = setInterval(async () => {
+    const { data: currentSession, error } = await supabase
+      .from("sessions")
+      .select("state")
+      .eq("token", token)
+      .single();
+    
+    if (error) {
+      console.error(`Polling error for token ${token}:`, error);
+      return;
+    }
+
     console.log(`Poll for token ${token}: state ${currentSession ? currentSession.state : 'no session'}`);
     res.write(`data: ${JSON.stringify({ state: currentSession ? currentSession.state : 'unknown' })}\n\n`);
     res.flush();
