@@ -28,16 +28,27 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Server configuration error." });
   }
 
-  let context;
+  let embedId;
   try {
     const decoded = jwt.verify(templateToken, jwtSecret);
-    context = decoded.context;
+    embedId = decoded.embedId;
+    if (!embedId) throw new Error("Token is missing embedId");
   } catch (error) {
     console.error("JWT verification failed:", error);
     return res.status(401).json({ error: "Invalid or expired token." });
   }
 
-  // A valid template token, now create a unique session for this visitor
+  // Verify the embed exists
+  const { data: embed, error: embedError } = await supabase
+    .from('embeds')
+    .select('id')
+    .eq('id', embedId)
+    .single();
+
+  if (embedError || !embed) {
+    return res.status(404).json({ error: "Embed configuration not found." });
+  }
+
   const sessionToken = uuidv4();
   const getOrigin = () => {
     if (process.env.NEXT_PUBLIC_APP_URL) {
@@ -55,7 +66,7 @@ export default async function handler(req, res) {
     .insert({
       token: sessionToken,
       state: "init",
-      context: context,
+      embed_id: embedId, // Use the foreign key
       embed_fingerprint: fingerprint,
       qr_url: qrUrl,
     });
@@ -67,6 +78,5 @@ export default async function handler(req, res) {
 
   const qrDataUrl = await QRCode.toDataURL(qrUrl);
 
-  // Return the NEW session token to the client
   res.status(200).json({ qrDataUrl, sessionToken });
 }
