@@ -14,16 +14,17 @@ export default async function handler(req, res) {
   }
 
   // First, let's check if the session even exists using the public client.
-  const { data: session, error: fetchError } = await supabase
+  const { data: sessions, error: fetchError } = await supabase
     .from("sessions")
     .select("state")
-    .eq("token", token)
-    .single();
+    .eq("token", token);
 
-  if (fetchError || !session) {
+  if (fetchError || !sessions || sessions.length === 0) {
     console.error("Supabase fetch error on approve:", fetchError);
     return res.status(404).json({ error: "Session not found." });
   }
+
+  const session = sessions[0]; // Take the first one
 
   // Check if the session is in a state that can be approved.
   if (!['init', 'loaded', 'scanned'].includes(session.state)) {
@@ -31,19 +32,18 @@ export default async function handler(req, res) {
   }
 
   // Use the admin client to perform the update.
-  const { data: updatedSession, error: updateError } = await supabaseAdmin
+  const { data: updatedSessions, error: updateError } = await supabaseAdmin
     .from("sessions")
     .update({ state: "verified", mobile_fingerprint: fingerprint, verified_at: new Date().toISOString() })
     .eq("token", token)
-    .select()
-    .single();
+    .select();
 
   if (updateError) {
     console.error("Supabase update error:", updateError);
     return res.status(500).json({ error: `Failed to approve session: ${updateError.message}` });
   }
 
-  if (!updatedSession) {
+  if (!updatedSessions || updatedSessions.length === 0) {
     console.error("Session update failed. No rows were updated, possibly due to RLS policy.");
     return res.status(500).json({ error: "Failed to approve session. The update was not applied." });
   }
