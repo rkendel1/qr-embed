@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export default function QRPage({ token, session }) {
   const [approved, setApproved] = useState(false);
@@ -97,7 +96,7 @@ export async function getServerSideProps(context) {
 
   // If the session is in a pre-scanned state, update it to 'scanned'
   if (session.state === 'init' || session.state === 'loaded') {
-    const { data: updatedSession, error: updateError } = await supabaseAdmin
+    const { data: updatedSession, error: updateError } = await supabase
       .from("sessions")
       .update({ state: "scanned", scanned_at: new Date().toISOString() })
       .eq("token", token)
