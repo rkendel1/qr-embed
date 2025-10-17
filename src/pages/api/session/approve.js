@@ -30,20 +30,25 @@ export default async function handler(req, res) {
   }
 
   // Check if the session is in a state that can be approved.
-  // It should be 'scanned', but we'll allow 'init' and 'loaded' as a fallback
-  // in case the intermediate state updates failed.
   if (!['init', 'loaded', 'scanned'].includes(session.state)) {
     return res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'.` });
   }
 
-  const { error: updateError } = await supabase
+  const { data: updatedSession, error: updateError } = await supabase
     .from("sessions")
     .update({ state: "verified", mobile_fingerprint: fingerprint })
-    .eq("token", token);
+    .eq("token", token)
+    .select()
+    .single();
 
   if (updateError) {
     console.error("Supabase update error:", updateError);
     return res.status(500).json({ error: `Failed to approve session: ${updateError.message}` });
+  }
+
+  if (!updatedSession) {
+    console.error("Session update failed. No rows were updated, possibly due to RLS policy.");
+    return res.status(500).json({ error: "Failed to approve session. The update was not applied." });
   }
 
   res.status(200).json({ status: "ok" });
