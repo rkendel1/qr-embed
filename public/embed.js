@@ -5,33 +5,51 @@
     return;
   }
 
+  // Create main container for QR and status text
+  const mainContainer = document.createElement('div');
+  mainContainer.style.fontFamily = 'sans-serif';
+  mainContainer.style.color = '#555';
+  mainContainer.style.display = 'flex';
+  mainContainer.style.flexDirection = 'column';
+  mainContainer.style.alignItems = 'center';
+  mainContainer.style.gap = '12px';
+  
   const qrContainer = document.createElement('div');
-  qrContainer.style.fontFamily = 'sans-serif';
-  qrContainer.style.color = '#555';
-  script.parentNode.insertBefore(qrContainer, script);
+  qrContainer.style.width = '150px';
+  qrContainer.style.height = '150px';
+  
+  const statusContainer = document.createElement('p');
+  statusContainer.style.margin = '0';
+  statusContainer.style.fontSize = '14px';
+  statusContainer.style.minHeight = '20px'; // Prevent layout shift
+  statusContainer.style.textAlign = 'center';
+
+  mainContainer.appendChild(qrContainer);
+  mainContainer.appendChild(statusContainer);
+  script.parentNode.insertBefore(mainContainer, script);
 
   const templateToken = script.dataset.token;
   const apiHost = script.dataset.host;
 
   if (!apiHost) {
     console.error("QR Embed: 'data-host' attribute is missing from the script tag.");
-    qrContainer.innerText = "Configuration error.";
+    statusContainer.innerText = "Configuration error.";
     return;
   }
 
   if (!templateToken) {
     console.error("QR Embed: 'data-token' attribute is missing from the script tag.");
-    qrContainer.innerText = "Configuration error.";
+    statusContainer.innerText = "Configuration error.";
     return;
   }
 
   function showLoading() {
-    qrContainer.innerText = 'Loading QR Code...';
+    statusContainer.innerText = 'Loading QR Code...';
   }
 
   function showError(message) {
-    qrContainer.style.color = '#c00';
-    qrContainer.innerText = message;
+    statusContainer.style.color = '#c00';
+    statusContainer.innerText = message;
   }
 
   function displayQR(qrDataUrl) {
@@ -84,18 +102,44 @@
           bubbles: true,
           detail: { token: sessionToken }
         });
-        qrContainer.dispatchEvent(event);
+        mainContainer.dispatchEvent(event);
 
         const evtSource = new EventSource(`${apiHost}/api/events?token=${sessionToken}`);
+        
         evtSource.onmessage = (e) => {
           const event = JSON.parse(e.data);
-          if (event.state === "verified") {
-            qrContainer.innerHTML = '<p style="font-family: sans-serif; color: green;">Connected!</p>';
-            evtSource.close();
+          console.log('QR Embed: Received state update:', event.state);
+
+          switch (event.state) {
+            case 'init':
+            case 'loaded':
+              statusContainer.innerText = 'Scan the QR code to connect.';
+              statusContainer.style.color = '#555';
+              break;
+            case 'scanned':
+              statusContainer.innerText = 'Scanned! Please approve on your device.';
+              statusContainer.style.color = '#d97706'; // Amber 600
+              break;
+            case 'verified':
+              mainContainer.innerHTML = ''; // Clear old content
+              const successMessage = document.createElement('div');
+              successMessage.style.display = 'flex';
+              successMessage.style.flexDirection = 'column';
+              successMessage.style.alignItems = 'center';
+              successMessage.style.justifyContent = 'center';
+              successMessage.style.height = '170px'; // Match old container height
+              successMessage.innerHTML = '<p style="font-family: sans-serif; color: #16a34a; font-size: 16px; font-weight: bold;">Connected!</p>';
+              mainContainer.appendChild(successMessage);
+              evtSource.close();
+              break;
+            default:
+              statusContainer.innerText = 'Waiting for connection...';
           }
         };
+
         evtSource.onerror = () => {
-          console.error("SSE connection error.");
+          console.error("QR Embed: SSE connection error.");
+          showError("Connection lost. Please refresh.");
           evtSource.close();
         };
 
