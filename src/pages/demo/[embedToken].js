@@ -31,7 +31,7 @@ export default function DemoPage({ embed, origin }) {
               <p className="text-lg text-indigo-600 font-semibold mb-4">$99.99</p>
               <p className="text-gray-600 mb-6">
                 This is a demonstration of how the QR code embed appears on a typical product page. 
-                The component below is loaded dynamically and is ready to connect a user's session.
+                The component below is loaded dynamically and is ready to connect a user&apos;s session.
               </p>
               
               <div className="mt-8 p-6 border-t border-gray-200">
