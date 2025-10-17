@@ -19,7 +19,7 @@ export default function Dashboard() {
     setGenerating(true);
     setEmbedCode('');
     try {
-      const res = await fetch('/api/session/create', {
+      const res = await fetch('/api/embed/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ context }),
@@ -27,17 +27,13 @@ export default function Dashboard() {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Failed to create session');
+        throw new Error(err.error || 'Failed to create template token');
       }
 
-      const newSession = await res.json();
-      
-      setSessions(currentSessions => [newSession, ...currentSessions]);
-      setNewSessionToken(newSession.token);
-      setTimeout(() => setNewSessionToken(null), 5000);
+      const { templateToken } = await res.json();
 
       const origin = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-      const code = `<div id="qr-embed-container" data-token="${newSession.token}" data-host="${origin}"></div>
+      const code = `<div id="qr-embed-container" data-token="${templateToken}" data-host="${origin}"></div>
 <script src="${origin}/embed.js" defer><\/script>`;
       setEmbedCode(code);
       setCopied(false);

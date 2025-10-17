@@ -5,7 +5,7 @@
     return;
   }
 
-  const token = qrContainer.dataset.token;
+  const templateToken = qrContainer.dataset.token;
   const apiHost = qrContainer.dataset.host;
 
   if (!apiHost) {
@@ -13,7 +13,7 @@
     return;
   }
 
-  if (!token) {
+  if (!templateToken) {
     console.error("QR Embed: 'data-token' attribute is missing from the container.");
     return;
   }
@@ -49,7 +49,7 @@
         const res = await fetch(`${apiHost}/api/embed/load`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, fingerprint }),
+          body: JSON.stringify({ templateToken, fingerprint }),
         });
 
         if (!res.ok) {
@@ -59,15 +59,17 @@
         const data = await res.json();
         displayQR(data.qrDataUrl);
 
-        // Dispatch a custom event with the session token
+        const sessionToken = data.sessionToken;
+
+        // Dispatch a custom event with the new session token
         const event = new CustomEvent('qrEmbedLoaded', {
           bubbles: true,
-          detail: { token: token }
+          detail: { token: sessionToken }
         });
         qrContainer.dispatchEvent(event);
 
-        // Optional: Set up SSE for real-time status updates on the embedded page
-        const evtSource = new EventSource(`${apiHost}/api/events?token=${token}`);
+        // Set up SSE for real-time status updates using the new session token
+        const evtSource = new EventSource(`${apiHost}/api/events?token=${sessionToken}`);
         evtSource.onmessage = (e) => {
           const event = JSON.parse(e.data);
           if (event.state === "verified") {
