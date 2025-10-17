@@ -208,8 +208,9 @@ export default function Dashboard() {
                                 <p>Token: <code className="text-xs bg-gray-100 p-1 rounded">{s.token.substring(0, 8)}...</code></p>
                                 {s.fingerprint && <p>Device FP: <code className="text-xs bg-gray-100 p-1 rounded truncate max-w-[10ch] inline-block">{s.fingerprint}</code></p>}
                                 {s.mobile_fingerprint && <p>Mobile FP: <code className="text-xs bg-gray-100 p-1 rounded truncate max-w-[10ch] inline-block">{s.mobile_fingerprint}</code></p>}
-                                {s.scanned_at && <p>Scanned: <code className="text-xs bg-gray-100 p-1 rounded">{new Date(s.scanned_at).toLocaleTimeString()}</code></p>}
-                                {s.verified_at && <p>Verified: <code className="text-xs bg-gray-100 p-1 rounded">{new Date(s.verified_at).toLocaleTimeString()}</code></p>}
+                                {s.loaded_at && <p>Loaded: <code className="text-xs bg-gray-100 p-1 rounded">{new Date(s.loaded_at).toLocaleTimeString()}</code></p>}
+                                {s.scanned_at && <p>Scanned: <p className="text-xs bg-gray-100 p-1 rounded">{new Date(s.scanned_at).toLocaleTimeString()}</p></p>}
+                                {s.verified_at && <p>Verified: <p className="text-xs bg-gray-100 p-1 rounded">{new Date(s.verified_at).toLocaleTimeString()}</p></p>}
                               </div>
                             </td>
                           </tr>

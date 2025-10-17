@@ -78,6 +78,7 @@ export default async function handler(req, res) {
       embed_id: embed.id,
       fingerprint: fingerprint,
       qr_url: qrUrl,
+      loaded_at: new Date().toISOString(),
     })
     .select()
     .single();
