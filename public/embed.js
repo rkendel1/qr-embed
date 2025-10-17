@@ -70,7 +70,8 @@
     fpScript.onload = async () => {
       try {
         const components = await Fingerprint2.getPromise();
-        const fingerprint = components.map(c => c.value).join("");
+        const values = components.map(component => component.value);
+        const fingerprint = Fingerprint2.x64hash128(values.join(''), 31);
 
         const res = await fetch(`${apiHost}/api/embed/load`, {
           method: "POST",
