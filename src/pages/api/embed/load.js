@@ -68,7 +68,7 @@ export default async function handler(req, res) {
   const origin = getOrigin();
   const qrUrl = `${origin}/session/${sessionToken}`;
 
-  const { error: insertError } = await supabase
+  const { data: newSession, error: insertError } = await supabase
     .from("sessions")
     .insert({
       token: sessionToken,
@@ -76,13 +76,15 @@ export default async function handler(req, res) {
       embed_id: embed.id,
       embed_fingerprint: fingerprint,
       qr_url: qrUrl,
-    });
+    })
+    .select()
+    .single();
 
-  if (insertError) {
+  if (insertError || !newSession) {
     console.error("Supabase insert error on load:", insertError);
     return res.status(500).json({ error: "Failed to create session." });
   }
 
   const qrDataUrl = await QRCode.toDataURL(qrUrl);
-  res.status(200).json({ qrDataUrl, sessionToken });
+  res.status(200).json({ qrDataUrl, sessionToken: newSession.token });
 }
