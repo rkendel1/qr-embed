@@ -2,15 +2,15 @@ import { supabase } from "@/lib/supabase";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
-  const { token } = req.body;
+  const { token, fingerprint } = req.body;
 
-  if (!token) {
-    return res.status(400).json({ error: "Token is required" });
+  if (!token || !fingerprint) {
+    return res.status(400).json({ error: "Token and fingerprint are required" });
   }
 
   const { error } = await supabase
     .from("sessions")
-    .update({ state: "verified" })
+    .update({ state: "verified", mobile_fingerprint: fingerprint })
     .eq("token", token);
 
   if (error) {

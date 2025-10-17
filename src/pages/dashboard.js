@@ -205,12 +205,17 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
-                          <code className="text-xs bg-gray-100 p-1 rounded">{s.token}</code>
+                      <div className="text-sm text-gray-500 overflow-hidden">
+                        <p className="truncate">
+                          Device FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.fingerprint}</code>
                         </p>
+                        {s.mobile_fingerprint && (
+                          <p className="truncate">
+                            Paired FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.mobile_fingerprint}</code>
+                          </p>
+                        )}
                       </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 self-end">
                         <p>
                           {new Date(s.created_at).toLocaleString()}
                         </p>
