@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
   const { error: updateError } = await supabase
     .from("sessions")
-    .update({ state: "verified", mobile_fingerprint: fingerprint })
+    .update({ state: "verified" })
     .eq("token", token);
 
   if (updateError) {

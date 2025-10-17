@@ -181,11 +181,6 @@ export default function Dashboard() {
                           <p className="truncate">
                             Device FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.fingerprint}</code>
                           </p>
-                          {s.mobile_fingerprint && (
-                            <p className="truncate">
-                              Paired FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.mobile_fingerprint}</code>
-                            </p>
-                          )}
                         </div>
                       </div>
                       <div className="mt-4 flex items-center justify-between">
