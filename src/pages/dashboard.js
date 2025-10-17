@@ -1,11 +1,34 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import QRCode from "qrcode";
 
 export default function Dashboard() {
   const [context, setContext] = useState("marketing");
   const [embedCode, setEmbedCode] = useState(null);
   const [copied, setCopied] = useState(false);
   const [sessions, setSessions] = useState([]);
+  const [copiedToken, setCopiedToken] = useState(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState(null);
+
+  // Generate QR code data URL when a session's QR URL is selected
+  useEffect(() => {
+    if (qrCodeUrl) {
+      QRCode.toDataURL(qrCodeUrl, { width: 256 })
+        .then(url => {
+          const modal = document.getElementById('qr-modal');
+          const img = modal.querySelector('img');
+          img.src = url;
+          modal.classList.remove('hidden');
+        })
+        .catch(err => {
+          console.error(err);
+          setQrCodeUrl(null);
+        });
+    } else {
+      const modal = document.getElementById('qr-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+  }, [qrCodeUrl]);
 
   // Initial fetch for sessions
   useEffect(() => {
@@ -32,7 +55,6 @@ export default function Dashboard() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sessions' },
         (payload) => {
-          console.log('Change received!', payload);
           if (payload.eventType === 'INSERT') {
             setSessions(currentSessions => [payload.new, ...currentSessions]);
           } else if (payload.eventType === 'UPDATE') {
@@ -42,12 +64,10 @@ export default function Dashboard() {
               )
             );
           }
-          // Note: DELETE is not handled in this example
         }
       )
       .subscribe();
 
-    // Cleanup subscription on component unmount
     return () => {
       supabase.removeChannel(channel);
     };
@@ -59,6 +79,17 @@ export default function Dashboard() {
 <script src="${origin}/embed.js" defer><\/script>`;
     setEmbedCode(code);
     setCopied(false);
+  };
+
+  const handleCopy = (textToCopy, id) => {
+    navigator.clipboard.writeText(textToCopy);
+    if (id === 'embed') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      setCopiedToken(id);
+      setTimeout(() => setCopiedToken(null), 2000);
+    }
   };
 
   const StatusPill = ({ state }) => {
@@ -75,104 +106,116 @@ export default function Dashboard() {
     );
   };
 
-  const handleCopy = () => {
-    if (embedCode) {
-      navigator.clipboard.writeText(embedCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">Creator Dashboard</h1>
+    <>
+      {/* QR Code Modal */}
+      <div id="qr-modal" className="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" onClick={() => setQrCodeUrl(null)}>
+        <div className="bg-white p-4 rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()}>
+          <img src="" alt="QR Code" />
+          <button onClick={() => setQrCodeUrl(null)} className="mt-4 w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Close</button>
         </div>
-      </header>
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Create New Embed</h2>
-          <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-4 space-y-4 sm:space-y-0">
-            <div className="flex-grow">
-              <label htmlFor="context" className="block text-sm font-medium text-gray-700">
-                Embed Context
-              </label>
-              <input
-                type="text"
-                id="context"
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="e.g., marketing, support"
-              />
-            </div>
-            <button
-              onClick={handleCreateEmbed}
-              className="w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Generate Embed Code
-            </button>
-          </div>
-        </div>
+      </div>
 
-        {embedCode && (
-          <div className="mt-8 bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Embed Code</h3>
-            <p className="text-sm text-gray-500 mb-2">Copy and paste this snippet into your website's HTML.</p>
-            <div className="relative bg-gray-800 rounded-md p-4 text-white font-mono text-sm overflow-x-auto">
+      <div className="min-h-screen bg-gray-50 text-gray-800">
+        <header className="bg-white shadow-sm">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <h1 className="text-2xl font-bold text-gray-900">Creator Dashboard</h1>
+          </div>
+        </header>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Create New Embed</h2>
+            <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-4 space-y-4 sm:space-y-0">
+              <div className="flex-grow">
+                <label htmlFor="context" className="block text-sm font-medium text-gray-700">
+                  Embed Context
+                </label>
+                <input
+                  type="text"
+                  id="context"
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="e.g., marketing, support"
+                />
+              </div>
               <button
-                onClick={handleCopy}
-                className="absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-white font-sans text-xs font-bold py-1 px-2 rounded"
+                onClick={handleCreateEmbed}
+                className="w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                {copied ? "Copied!" : "Copy"}
+                Generate Embed Code
               </button>
-              <pre><code>{embedCode}</code></pre>
             </div>
           </div>
-        )}
 
-        <div className="mt-8">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Live Sessions</h3>
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <ul className="divide-y divide-gray-200">
-              {sessions.length > 0 ? sessions.map((s) => (
-                <li key={s.token}>
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-indigo-600 truncate">
-                        Context: {s.context}
-                      </p>
-                      <div className="ml-2 flex-shrink-0 flex">
-                        <StatusPill state={s.state} />
-                      </div>
-                    </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="text-sm text-gray-500 overflow-hidden">
-                        <p className="truncate">
-                          Device FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.fingerprint}</code>
+          {embedCode && (
+            <div className="mt-8 bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Embed Code</h3>
+              <p className="text-sm text-gray-500 mb-2">Copy and paste this snippet into your website's HTML.</p>
+              <div className="relative bg-gray-800 rounded-md p-4 text-white font-mono text-sm overflow-x-auto">
+                <button
+                  onClick={() => handleCopy(embedCode, 'embed')}
+                  className="absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-white font-sans text-xs font-bold py-1 px-2 rounded"
+                >
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+                <pre><code>{embedCode}</code></pre>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-8">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Live Sessions</h3>
+            <div className="bg-white shadow overflow-hidden sm:rounded-md">
+              <ul className="divide-y divide-gray-200">
+                {sessions.length > 0 ? sessions.map((s) => (
+                  <li key={s.token}>
+                    <div className="px-4 py-4 sm:px-6">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-indigo-600 truncate">
+                          Context: {s.context}
                         </p>
-                        {s.mobile_fingerprint && (
+                        <div className="ml-2 flex-shrink-0 flex">
+                          <StatusPill state={s.state} />
+                        </div>
+                      </div>
+                      <div className="mt-2 space-y-2">
+                        <div className="text-sm text-gray-600 flex items-center">
+                          <span className="font-medium w-20">Session ID:</span>
+                          <code className="text-xs bg-gray-100 p-1 rounded truncate">{s.token}</code>
+                          <button onClick={() => handleCopy(s.token, s.token)} className="ml-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded">{copiedToken === s.token ? 'Copied!' : 'Copy'}</button>
+                        </div>
+                        <div className="text-sm text-gray-500 overflow-hidden">
                           <p className="truncate">
-                            Paired FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.mobile_fingerprint}</code>
+                            Device FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.fingerprint}</code>
                           </p>
-                        )}
+                          {s.mobile_fingerprint && (
+                            <p className="truncate">
+                              Paired FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.mobile_fingerprint}</code>
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 self-end">
-                        <p>
-                          {new Date(s.created_at).toLocaleString()}
-                        </p>
+                      <div className="mt-4 flex items-center justify-between">
+                        <div className="text-sm text-gray-500">
+                          <p>
+                            {new Date(s.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <button onClick={() => setQrCodeUrl(s.qr_url)} className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                          Show QR Code
+                        </button>
                       </div>
                     </div>
-                  </div>
-                </li>
-              )) : (
-                <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">No active sessions.</li>
-              )}
-            </ul>
+                  </li>
+                )) : (
+                  <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">No active sessions.</li>
+                )}
+              </ul>
+            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </>
   );
 }
