@@ -85,7 +85,7 @@ export default function Dashboard() {
 
   const getEmbedCode = (embed) => {
     const origin = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-    return `<script src="${origin}/embed.js" data-token="${embed.name}" data-host="${origin}" defer><\/script>`;
+    return `<script src="${origin}/embed.js" data-token="${embed.template_token}" data-host="${origin}" defer><\/script>`;
   };
 
   const StatusPill = ({ state }) => {
