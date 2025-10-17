@@ -35,13 +35,25 @@ export default function QRPage({ token, session }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, fingerprint }),
       });
+
       if (!res.ok) {
-        throw new Error("Approval request failed");
+        let errorMsg = `Approval request failed with status: ${res.status}`;
+        try {
+          const errorJson = await res.json();
+          // Use the server's error message if available
+          if (errorJson.error) {
+            errorMsg = errorJson.error;
+          }
+        } catch (e) {
+          // Response was not JSON, do nothing extra
+        }
+        throw new Error(errorMsg);
       }
+
       setApproved(true);
     } catch (error) {
       console.error("Approval failed:", error);
-      setError("Failed to approve the session. Please try again.");
+      setError(`Failed to approve the session: ${error.message}.`);
     }
   };
 
