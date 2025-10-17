@@ -9,6 +9,7 @@ export default function Dashboard() {
   const [copied, setCopied] = useState(null);
   const [loading, setLoading] = useState({ embeds: false, sessions: false });
   const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState(null);
 
   const fetchEmbeds = useCallback(async () => {
     setLoading(prev => ({ ...prev, embeds: true }));
@@ -19,6 +20,7 @@ export default function Dashboard() {
       setEmbeds(data);
     } catch (error) {
       console.error("Error fetching embeds:", error);
+      setError(error.message);
     } finally {
       setLoading(prev => ({ ...prev, embeds: false }));
     }
@@ -33,6 +35,7 @@ export default function Dashboard() {
       setSessions(data);
     } catch (error) {
       console.error("Error fetching sessions:", error);
+      setError(error.message);
     } finally {
       setLoading(prev => ({ ...prev, sessions: false }));
     }
@@ -46,19 +49,23 @@ export default function Dashboard() {
   const handleGenerateEmbed = async () => {
     if (!embedName.trim()) return;
     setGenerating(true);
+    setError(null);
     try {
       const res = await fetch('/api/embed/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: embedName }),
       });
-      if (!res.ok) throw new Error('Failed to create embed');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create embed');
+      }
       const newEmbed = await res.json();
       setEmbeds([newEmbed, ...embeds]);
       setEmbedName("");
-    } catch (error)
-      {
+    } catch (error) {
       console.error("Error generating embed:", error);
+      setError(error.message);
     } finally {
       setGenerating(false);
     }
@@ -88,6 +95,7 @@ export default function Dashboard() {
   };
 
   const handleToggleEmbed = async (embedId, currentStatus) => {
+    setError(null);
     const originalEmbeds = embeds;
     setEmbeds(embeds.map(e => e.id === embedId ? { ...e, is_active: !currentStatus } : e));
 
@@ -99,10 +107,12 @@ export default function Dashboard() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to toggle embed');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to toggle embed status.');
       }
     } catch (error) {
       console.error("Error toggling embed:", error);
+      setError(error.message);
       setEmbeds(originalEmbeds);
     }
   };
@@ -127,6 +137,15 @@ export default function Dashboard() {
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong className="font-bold">Error:</strong>
+            <span className="block sm:inline ml-2">{error}</span>
+            <button onClick={() => setError(null)} className="absolute top-0 bottom-0 right-0 px-4 py-3">
+              <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 space-y-8">
             <div className="bg-white p-6 rounded-lg shadow">
