@@ -4,12 +4,21 @@ import QRCode from "qrcode";
 
 export default function Dashboard() {
   const [context, setContext] = useState("marketing");
-  const [embedCode, setEmbedCode] = useState(null);
+  const [embedCode, setEmbedCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [copiedToken, setCopiedToken] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
   const [newSessionToken, setNewSessionToken] = useState(null);
+
+  // Update embed code whenever context changes
+  useEffect(() => {
+    const origin = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+    const code = `<div id="qr-embed-container" data-context="${context}" data-host="${origin}"></div>
+<script src="${origin}/embed.js" defer><\/script>`;
+    setEmbedCode(code);
+    setCopied(false);
+  }, [context]);
 
   // Generate QR code data URL when a session's QR URL is selected
   useEffect(() => {
@@ -76,14 +85,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  const handleCreateEmbed = () => {
-    const origin = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-    const code = `<div id="qr-embed-container" data-context="${context}" data-host="${origin}"></div>
-<script src="${origin}/embed.js" defer><\/script>`;
-    setEmbedCode(code);
-    setCopied(false);
-  };
-
   const handleCopy = (textToCopy, id) => {
     navigator.clipboard.writeText(textToCopy);
     if (id === 'embed') {
@@ -127,47 +128,33 @@ export default function Dashboard() {
         </header>
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Create New Embed</h2>
-            <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-4 space-y-4 sm:space-y-0">
-              <div className="flex-grow">
-                <label htmlFor="context" className="block text-sm font-medium text-gray-700">
-                  Embed Context
-                </label>
-                <input
-                  type="text"
-                  id="context"
-                  value={context}
-                  onChange={(e) => setContext(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="e.g., marketing, support"
-                />
-              </div>
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Your Embed Code</h2>
+            <div className="flex-grow mb-4">
+              <label htmlFor="context" className="block text-sm font-medium text-gray-700">
+                Embed Context
+              </label>
+              <input
+                type="text"
+                id="context"
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="e.g., marketing, support"
+              />
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Paste this snippet into your website. A new session will be created and highlighted below as soon as a user visits the page.
+            </p>
+            <div className="relative bg-gray-800 rounded-md p-4 text-white font-mono text-sm overflow-x-auto">
               <button
-                onClick={handleCreateEmbed}
-                className="w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                onClick={() => handleCopy(embedCode, 'embed')}
+                className="absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-white font-sans text-xs font-bold py-1 px-2 rounded"
               >
-                Generate Embed Code
+                {copied ? "Copied!" : "Copy"}
               </button>
+              <pre><code>{embedCode}</code></pre>
             </div>
           </div>
-
-          {embedCode && (
-            <div className="mt-8 bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Your Embed Code</h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Paste this snippet into your website. A new session will be created and highlighted in the "Live Sessions" list below as soon as a user visits the page.
-              </p>
-              <div className="relative bg-gray-800 rounded-md p-4 text-white font-mono text-sm overflow-x-auto">
-                <button
-                  onClick={() => handleCopy(embedCode, 'embed')}
-                  className="absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-white font-sans text-xs font-bold py-1 px-2 rounded"
-                >
-                  {copied ? "Copied!" : "Copy"}
-                </button>
-                <pre><code>{embedCode}</code></pre>
-              </div>
-            </div>
-          )}
 
           <div className="mt-8">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Live Sessions</h3>
