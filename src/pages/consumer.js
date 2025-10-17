@@ -49,7 +49,7 @@ export default function ConsumerTestPage() {
               <textarea
                 id="embed-code"
                 rows="4"
-                className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono"
+                className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono text-gray-800 placeholder:text-gray-400"
                 placeholder={`<script src="..." data-token="..." ...><\/script>`}
                 value={embedCode}
                 onChange={(e) => setEmbedCode(e.target.value)}
