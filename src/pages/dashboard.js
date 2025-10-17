@@ -239,8 +239,13 @@ export default function Dashboard() {
                         </div>
                         <div className="text-sm text-gray-500 overflow-hidden">
                           <p className="truncate">
-                            {s.state === 'verified' ? 'Mobile FP' : 'Device FP'}: <code className="text-xs bg-gray-100 p-1 rounded">{s.fingerprint || 'N/A'}</code>
+                            Device FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.embed_fingerprint || 'N/A'}</code>
                           </p>
+                          {s.mobile_fingerprint && (
+                            <p className="truncate mt-1">
+                              Mobile FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.mobile_fingerprint}</code>
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="mt-4 flex items-center justify-between">

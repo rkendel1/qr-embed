@@ -56,7 +56,7 @@ export default async function handler(req, res) {
       token: sessionToken,
       state: "init",
       context: context,
-      fingerprint: fingerprint,
+      embed_fingerprint: fingerprint,
       qr_url: qrUrl,
     });
 

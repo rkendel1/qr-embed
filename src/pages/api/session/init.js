@@ -12,7 +12,7 @@ export default async function handler(req, res) {
 
   const { error } = await supabase.from("sessions").insert({
     token,
-    fingerprint,
+    embed_fingerprint: fingerprint,
     state: "init",
     context: context,
     qr_url: qrUrl,
