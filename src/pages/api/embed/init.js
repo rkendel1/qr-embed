@@ -3,12 +3,6 @@ import QRCode from "qrcode";
 import { supabase } from "@/lib/supabase";
 
 export default async function handler(req, res) {
-  // Allow requests from any origin for the embed
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
