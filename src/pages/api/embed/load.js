@@ -18,14 +18,14 @@ export default async function handler(req, res) {
   const { templateToken, fingerprint } = req.body;
 
   if (!templateToken || !fingerprint) {
-    return res.status(400).json({ error: "Template token and fingerprint are required" });
+    return res.status(400).json({ error: "Embed name and fingerprint are required" });
   }
 
-  // 1. Verify the embed exists
+  // 1. Verify the embed exists by name
   const { data: embed, error: embedError } = await supabase
     .from('embeds')
     .select('id')
-    .eq('template_token', templateToken)
+    .eq('name', templateToken)
     .single();
 
   if (embedError || !embed) {
