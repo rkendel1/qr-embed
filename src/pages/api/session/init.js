@@ -7,7 +7,8 @@ export default async function handler(req, res) {
 
   const { fingerprint, context = "marketing" } = req.body;
   const token = uuidv4();
-  const qrUrl = `${req.headers.origin}/session/${token}`;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.headers.origin;
+  const qrUrl = `${baseUrl}/session/${token}`;
 
   const { error } = await supabase.from("sessions").insert({
     token,

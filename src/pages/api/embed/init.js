@@ -23,11 +23,16 @@ export default async function handler(req, res) {
   }
 
   const token = uuidv4();
-  // Note: In a real app, the origin would be dynamically determined or passed in.
-  // For this example, we'll construct it assuming a standard deployment.
-  const protocol = req.headers['x-forwarded-proto'] || 'http';
-  const host = req.headers.host;
-  const origin = `${protocol}://${host}`;
+  // Use the public app URL from env if available, otherwise construct from headers
+  const getOrigin = () => {
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+      return process.env.NEXT_PUBLIC_APP_URL;
+    }
+    const protocol = req.headers['x-forwarded-proto'] || 'http';
+    const host = req.headers.host;
+    return `${protocol}://${host}`;
+  };
+  const origin = getOrigin();
   const qrUrl = `${origin}/session/${token}`;
 
   const { error } = await supabase.from("sessions").insert({
