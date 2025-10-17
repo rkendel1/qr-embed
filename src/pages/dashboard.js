@@ -2,12 +2,8 @@ import { useState, useRef, useEffect } from "react";
 
 export default function Dashboard() {
   const [context, setContext] = useState("marketing");
-  const [session, setSession] = useState(null);
-  const [status, setStatus] = useState("Ready");
-  const [qrDataUrl, setQrDataUrl] = useState(null);
   const [embedCode, setEmbedCode] = useState(null);
   const [copied, setCopied] = useState(false);
-  const evtSourceRef = useRef(null);
   const [sessions, setSessions] = useState([]);
 
   const fetchSessions = async () => {
@@ -23,75 +19,19 @@ export default function Dashboard() {
     }
   };
 
+  // Fetch sessions on initial load and then set up a poller
   useEffect(() => {
     fetchSessions();
+    const interval = setInterval(fetchSessions, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
   }, []);
 
-  const handleCreateEmbed = async () => {
-    setStatus("Initializing...");
-    setQrDataUrl(null);
-    setSession(null);
-    setEmbedCode(null);
-    setCopied(false);
-
-    if (evtSourceRef.current) {
-      evtSourceRef.current.close();
-    }
-
-    try {
-      const FingerprintJS = (await import("fingerprintjs2")).default;
-      const components = await FingerprintJS.getPromise();
-      const fingerprint = components.map(c => c.value).join("");
-
-      const res = await fetch("/api/session/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fingerprint, context }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Server responded with ${res.status}`);
-      }
-
-      const data = await res.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      setSession(data);
-      setQrDataUrl(data.qrDataUrl);
-      setStatus("QR Ready - Scan to connect");
-      fetchSessions(); // Refresh the list
-
-      const origin = window.location.origin;
-      const code = `<div id="qr"></div>
-<script>
-  window.sessionData = ${JSON.stringify({ token: data.token, qrDataUrl: data.qrDataUrl }, null, 2)};
-<\/script>
+  const handleCreateEmbed = () => {
+    const origin = window.location.origin;
+    const code = `<div id="qr-embed-container" data-context="${context}" data-host="${origin}"></div>
 <script src="${origin}/embed.js" defer><\/script>`;
-      setEmbedCode(code);
-
-      // SSE listener
-      const evtSource = new EventSource(`/api/events?token=${data.token}`);
-      evtSourceRef.current = evtSource;
-      evtSource.onmessage = e => {
-        const event = JSON.parse(e.data);
-        if (event.state === "verified") {
-          setStatus("Connected!");
-          evtSource.close();
-          evtSourceRef.current = null;
-        } else {
-          setStatus(`Status: ${event.state}`);
-        }
-      };
-      evtSource.onerror = () => {
-        setStatus("Connection error. Retrying...");
-      };
-
-    } catch (error) {
-      console.error("Error creating embed:", error);
-      setStatus(`Error: ${error.message}`);
-    }
+    setEmbedCode(code);
+    setCopied(false);
   };
 
   const StatusPill = ({ state }) => {
@@ -144,53 +84,29 @@ export default function Dashboard() {
               onClick={handleCreateEmbed}
               className="w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
-              Generate QR Code
+              Generate Embed Code
             </button>
           </div>
         </div>
 
-        {status !== "Ready" && (
+        {embedCode && (
           <div className="mt-8 bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">New Session Details</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Status: <span className="font-semibold">{status}</span>
-            </p>
-            {session && (
-              <p className="text-sm text-gray-600 mb-4">
-                Session ID: <code className="text-xs bg-gray-100 p-1 rounded">{session.token}</code>
-              </p>
-            )}
-            <div className="flex justify-center">
-              {qrDataUrl ? (
-                <img src={qrDataUrl} alt="QR Code" className="w-48 h-48" />
-              ) : (
-                status.startsWith("Initializing") && (
-                  <div className="w-48 h-48 bg-gray-100 flex items-center justify-center rounded-md">
-                    <p className="text-gray-500">Loading...</p>
-                  </div>
-                )
-              )}
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Embed Code</h3>
+            <p className="text-sm text-gray-500 mb-2">Copy and paste this snippet into your website's HTML.</p>
+            <div className="relative bg-gray-800 rounded-md p-4 text-white font-mono text-sm overflow-x-auto">
+              <button
+                onClick={handleCopy}
+                className="absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-white font-sans text-xs font-bold py-1 px-2 rounded"
+              >
+                {copied ? "Copied!" : "Copy"}
+              </button>
+              <pre><code>{embedCode}</code></pre>
             </div>
-            {embedCode && (
-              <div className="mt-6">
-                <h4 className="text-md font-medium text-gray-900 mb-2">Embed Code</h4>
-                <p className="text-sm text-gray-500 mb-2">Copy and paste this snippet into your website's HTML.</p>
-                <div className="relative bg-gray-800 rounded-md p-4 text-white font-mono text-sm overflow-x-auto">
-                  <button
-                    onClick={handleCopy}
-                    className="absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-white font-sans text-xs font-bold py-1 px-2 rounded"
-                  >
-                    {copied ? "Copied!" : "Copy"}
-                  </button>
-                  <pre><code>{embedCode}</code></pre>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
         <div className="mt-8">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Existing Sessions</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Live Sessions</h3>
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <ul className="divide-y divide-gray-200">
               {sessions.length > 0 ? sessions.map((s) => (
@@ -224,7 +140,7 @@ export default function Dashboard() {
                   </div>
                 </li>
               )) : (
-                <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">No sessions found.</li>
+                <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">No active sessions.</li>
               )}
             </ul>
           </div>
