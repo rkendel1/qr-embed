@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import QRCode from "qrcode";
 
@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [copiedToken, setCopiedToken] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
   const [newSessionToken, setNewSessionToken] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // Update embed code whenever context changes
   useEffect(() => {
@@ -40,22 +41,26 @@ export default function Dashboard() {
     }
   }, [qrCodeUrl]);
 
+  const fetchSessions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("sessions")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setSessions(data);
+    } catch (error) {
+      console.error("Error fetching sessions:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Initial fetch for sessions
   useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("sessions")
-          .select("*")
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        setSessions(data);
-      } catch (error) {
-        console.error("Error fetching initial sessions:", error);
-      }
-    };
     fetchSessions();
-  }, []);
+  }, [fetchSessions]);
 
   // Real-time subscription for session changes
   useEffect(() => {
@@ -157,7 +162,16 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-8">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Live Sessions</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Live Sessions</h3>
+              <button
+                onClick={fetchSessions}
+                disabled={loading}
+                className="px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                {loading ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
             <div className="bg-white shadow overflow-hidden sm:rounded-md">
               <ul className="divide-y divide-gray-200">
                 {sessions.length > 0 ? sessions.map((s) => (
