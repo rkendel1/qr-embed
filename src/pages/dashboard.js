@@ -179,7 +179,7 @@ export default function Dashboard() {
                         </div>
                         <div className="text-sm text-gray-500 overflow-hidden">
                           <p className="truncate">
-                            Device FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.fingerprint}</code>
+                            {s.state === 'verified' ? 'Mobile FP' : 'Device FP'}: <code className="text-xs bg-gray-100 p-1 rounded">{s.fingerprint}</code>
                           </p>
                         </div>
                       </div>
