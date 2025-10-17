@@ -172,7 +172,7 @@ export default function Dashboard() {
                       <code className="text-xs bg-gray-100 p-1 rounded truncate">{s.token}</code>
                     </div>
                     <div className="mt-2 text-sm text-gray-500">
-                      <p>Device FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.embed_fingerprint || 'N/A'}</code></p>
+                      <p>Device FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.fingerprint || 'N/A'}</code></p>
                       {s.mobile_fingerprint && <p>Mobile FP: <code className="text-xs bg-gray-100 p-1 rounded">{s.mobile_fingerprint}</code></p>}
                     </div>
                   </li>

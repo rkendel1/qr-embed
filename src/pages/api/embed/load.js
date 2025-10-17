@@ -39,7 +39,7 @@ export default async function handler(req, res) {
       .from('sessions')
       .select('token, qr_url')
       .eq('embed_id', embed.id)
-      .eq('embed_fingerprint', fingerprint)
+      .eq('fingerprint', fingerprint) // Corrected column name
       .in('state', ['init', 'scanned'])
       .order('created_at', { ascending: false })
       .limit(1);
@@ -54,8 +54,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ qrDataUrl, sessionToken: existingSession.token });
     }
   } catch (error) {
-    // The check failed. This is likely due to RLS policies.
-    // We will log a warning and proceed to create a new session anyway.
     console.warn("Could not check for existing session. Proceeding to create a new one.", error.message);
   }
 
@@ -78,7 +76,7 @@ export default async function handler(req, res) {
       token: sessionToken,
       state: "init",
       embed_id: embed.id,
-      embed_fingerprint: fingerprint,
+      fingerprint: fingerprint, // Corrected column name
       qr_url: qrUrl,
     })
     .select()
@@ -86,7 +84,6 @@ export default async function handler(req, res) {
 
   if (insertError || !newSession) {
     console.error("Supabase insert error on load:", insertError);
-    // If the check failed and now the insert fails, the issue is with the database permissions (RLS).
     return res.status(500).json({ error: "Failed to create session." });
   }
 
