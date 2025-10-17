@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import ToggleSwitch from "@/components/ToggleSwitch";
 
@@ -126,16 +126,40 @@ export default function Dashboard() {
     }
   };
 
+  const tableRows = useMemo(() => {
+    const sessionEmbedIds = new Set(sessions.map(s => s.embed_id));
+    const embedsWithoutSessions = embeds.filter(e => !sessionEmbedIds.has(e.id));
+
+    const sessionRows = sessions;
+    const embedOnlyRows = embedsWithoutSessions.map(embed => ({
+      token: `embed-only-${embed.id}`,
+      state: 'no_sessions',
+      created_at: embed.created_at,
+      embeds: embed,
+      isPlaceholder: true,
+    }));
+
+    const allRows = [...sessionRows, ...embedOnlyRows];
+    allRows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    return allRows;
+  }, [sessions, embeds]);
+
   const StatusPill = ({ state }) => {
     const stateStyles = {
       init: "bg-blue-100 text-blue-800",
       loaded: "bg-yellow-100 text-yellow-800",
       scanned: "bg-orange-100 text-orange-800",
       verified: "bg-green-100 text-green-800",
+      no_sessions: "bg-gray-100 text-gray-800",
       default: "bg-gray-100 text-gray-800",
     };
+    const stateText = {
+      no_sessions: "No sessions",
+    };
     const style = stateStyles[state] || stateStyles.default;
-    return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${style}`}>{state}</span>;
+    const text = stateText[state] || state;
+    return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${style}`}>{text}</span>;
   };
 
   return (
@@ -175,14 +199,14 @@ export default function Dashboard() {
 
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-medium text-gray-900">Live Sessions</h2>
+              <h2 className="text-lg font-medium text-gray-900">Embeds & Sessions</h2>
               <button onClick={fetchSessions} disabled={loading.sessions} className="px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
                 {loading.sessions ? '...' : 'Refresh'}
               </button>
             </div>
             <div className="bg-white shadow overflow-hidden sm:rounded-md">
-              {loading.sessions ? <p className="text-sm text-gray-500 text-center p-8">Loading sessions...</p> :
-                sessions.length > 0 ? (
+              {(loading.sessions || loading.embeds) ? <p className="text-sm text-gray-500 text-center p-8">Loading...</p> :
+                tableRows.length > 0 ? (
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
@@ -195,20 +219,24 @@ export default function Dashboard() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {sessions.map((s) => (
+                        {tableRows.map((s) => (
                           <tr key={s.token}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{s.embeds?.name || 'N/A'}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><StatusPill state={s.state} /></td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(s.created_at).toLocaleString()}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <div className="flex flex-col space-y-1">
-                                <p>Token: <code className="text-xs bg-gray-100 p-1 rounded">{s.token.substring(0, 8)}...</code></p>
-                                {s.fingerprint && <p>Device FP: <code className="text-xs bg-gray-100 p-1 rounded truncate max-w-[10ch] inline-block">{s.fingerprint}</code></p>}
-                                {s.mobile_fingerprint && <p>Mobile FP: <code className="text-xs bg-gray-100 p-1 rounded truncate max-w-[10ch] inline-block">{s.mobile_fingerprint}</code></p>}
-                                {s.loaded_at && <p>Loaded: <code className="text-xs bg-gray-100 p-1 rounded">{new Date(s.loaded_at).toLocaleTimeString()}</code></p>}
-                                {s.scanned_at && <p>Scanned: <p className="text-xs bg-gray-100 p-1 rounded">{new Date(s.scanned_at).toLocaleTimeString()}</p></p>}
-                                {s.verified_at && <p>Verified: <p className="text-xs bg-gray-100 p-1 rounded">{new Date(s.verified_at).toLocaleTimeString()}</p></p>}
-                              </div>
+                              {s.isPlaceholder ? (
+                                <span className="text-gray-400 italic">No session details</span>
+                              ) : (
+                                <div className="flex flex-col space-y-1">
+                                  <p>Token: <code className="text-xs bg-gray-100 p-1 rounded">{s.token.substring(0, 8)}...</code></p>
+                                  {s.fingerprint && <p>Device FP: <code className="text-xs bg-gray-100 p-1 rounded truncate max-w-[10ch] inline-block">{s.fingerprint}</code></p>}
+                                  {s.mobile_fingerprint && <p>Mobile FP: <code className="text-xs bg-gray-100 p-1 rounded truncate max-w-[10ch] inline-block">{s.mobile_fingerprint}</code></p>}
+                                  {s.loaded_at && <p>Loaded: <code className="text-xs bg-gray-100 p-1 rounded">{new Date(s.loaded_at).toLocaleTimeString()}</code></p>}
+                                  {s.scanned_at && <p>Scanned: <p className="text-xs bg-gray-100 p-1 rounded">{new Date(s.scanned_at).toLocaleTimeString()}</p></p>}
+                                  {s.verified_at && <p>Verified: <p className="text-xs bg-gray-100 p-1 rounded">{new Date(s.verified_at).toLocaleTimeString()}</p></p>}
+                                </div>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {s.embeds ? (
@@ -235,7 +263,7 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div className="text-center py-12 px-4">
-                    <p className="text-gray-500">No active sessions.</p>
+                    <p className="text-gray-500">No embeds or sessions found.</p>
                   </div>
                 )
               }
