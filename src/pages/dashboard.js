@@ -9,6 +9,7 @@ export default function Dashboard() {
   const [sessions, setSessions] = useState([]);
   const [copiedToken, setCopiedToken] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
+  const [qrModalDataUrl, setQrModalDataUrl] = useState(null);
   const [newSessionToken, setNewSessionToken] = useState(null);
   const [updatedSessionToken, setUpdatedSessionToken] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -31,7 +32,6 @@ export default function Dashboard() {
 
       const newSession = await res.json();
       
-      // Manually add the new session for instant UI update
       setSessions(currentSessions => [newSession, ...currentSessions]);
       setNewSessionToken(newSession.token);
       setTimeout(() => setNewSessionToken(null), 5000);
@@ -53,18 +53,14 @@ export default function Dashboard() {
     if (qrCodeUrl) {
       QRCode.toDataURL(qrCodeUrl, { width: 256 })
         .then(url => {
-          const modal = document.getElementById('qr-modal');
-          const img = modal.querySelector('img');
-          img.src = url;
-          modal.classList.remove('hidden');
+          setQrModalDataUrl(url);
         })
         .catch(err => {
           console.error(err);
           setQrCodeUrl(null);
         });
     } else {
-      const modal = document.getElementById('qr-modal');
-      if (modal) modal.classList.add('hidden');
+      setQrModalDataUrl(null);
     }
   }, [qrCodeUrl]);
 
@@ -95,10 +91,9 @@ export default function Dashboard() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sessions' },
         (payload) => {
-          console.log('Real-time change received:', payload); // For debugging
+          console.log('Real-time change received:', payload);
           if (payload.eventType === 'INSERT') {
             setSessions(currentSessions => {
-              // Prevent duplicates if session was already added manually
               if (currentSessions.some(s => s.token === payload.new.token)) {
                 return currentSessions;
               }
@@ -160,12 +155,14 @@ export default function Dashboard() {
 
   return (
     <>
-      <div id="qr-modal" className="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" onClick={() => setQrCodeUrl(null)}>
-        <div className="bg-white p-4 rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()}>
-          <img src="" alt="QR Code" />
-          <button onClick={() => setQrCodeUrl(null)} className="mt-4 w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Close</button>
+      {qrModalDataUrl && (
+        <div id="qr-modal" className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" onClick={() => setQrCodeUrl(null)}>
+          <div className="bg-white p-4 rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <img src={qrModalDataUrl} alt="QR Code" />
+            <button onClick={() => setQrCodeUrl(null)} className="mt-4 w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Close</button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="min-h-screen bg-gray-50 text-gray-800">
         <header className="bg-white shadow-sm">
