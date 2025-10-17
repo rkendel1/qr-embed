@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function Dashboard() {
   const [context, setContext] = useState("marketing");
@@ -6,28 +7,53 @@ export default function Dashboard() {
   const [copied, setCopied] = useState(false);
   const [sessions, setSessions] = useState([]);
 
-  const fetchSessions = async () => {
-    try {
-      const res = await fetch("/api/session/list");
-      if (!res.ok) {
-        throw new Error("Failed to fetch sessions");
-      }
-      const data = await res.json();
-      setSessions(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  // Fetch sessions on initial load and then set up a poller
+  // Initial fetch for sessions
   useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("sessions")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        setSessions(data);
+      } catch (error) {
+        console.error("Error fetching initial sessions:", error);
+      }
+    };
     fetchSessions();
-    const interval = setInterval(fetchSessions, 5000); // Poll every 5 seconds
-    return () => clearInterval(interval);
+  }, []);
+
+  // Real-time subscription for session changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('sessions-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sessions' },
+        (payload) => {
+          console.log('Change received!', payload);
+          if (payload.eventType === 'INSERT') {
+            setSessions(currentSessions => [payload.new, ...currentSessions]);
+          } else if (payload.eventType === 'UPDATE') {
+            setSessions(currentSessions =>
+              currentSessions.map(s =>
+                s.token === payload.new.token ? payload.new : s
+              )
+            );
+          }
+          // Note: DELETE is not handled in this example
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on component unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleCreateEmbed = () => {
-    // Hardcode the origin for local network testing
     const origin = "http://192.168.1.204:3000";
     const code = `<div id="qr-embed-container" data-context="${context}" data-host="${origin}"></div>
 <script src="${origin}/embed.js" defer><\/script>`;
