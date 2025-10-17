@@ -7,23 +7,6 @@ export default function QRPage({ token, session }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // This effect runs when the page loads, indicating the QR code was scanned.
-    async function markAsScanned() {
-      try {
-        await fetch("/api/session/scan", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
-        });
-      } catch (err) {
-        // This is a non-critical error from the user's perspective, so we just log it.
-        console.error("Failed to mark session as scanned:", err);
-      }
-    }
-    markAsScanned();
-  }, [token]);
-
-  useEffect(() => {
     async function generateFingerprint() {
       try {
         const FingerprintJS = (await import("fingerprintjs2")).default;
@@ -100,16 +83,36 @@ export default function QRPage({ token, session }) {
 export async function getServerSideProps(context) {
   const { token } = context.params;
 
-  const { data: session, error } = await supabase
+  // 1. Fetch the session
+  const { data: session, error: fetchError } = await supabase
     .from("sessions")
     .select("*")
     .eq("token", token)
     .single();
 
-  if (error || !session) {
-    console.error("Error fetching session:", error);
+  if (fetchError || !session) {
+    console.error("Error fetching session:", fetchError);
     return { notFound: true };
   }
 
+  // 2. If the session is in the initial state, update it to 'scanned'
+  if (session.state === 'init') {
+    const { data: updatedSession, error: updateError } = await supabase
+      .from("sessions")
+      .update({ state: "scanned" })
+      .eq("token", token)
+      .select()
+      .single();
+
+    if (updateError || !updatedSession) {
+      console.error("Error updating session to 'scanned':", updateError);
+      return { notFound: true };
+    }
+    
+    // Pass the newly updated session to the page
+    return { props: { token, session: updatedSession } };
+  }
+
+  // 3. If session was already 'scanned' or 'verified', just pass it along
   return { props: { token, session } };
 }
