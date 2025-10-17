@@ -95,6 +95,7 @@ export default function Dashboard() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sessions' },
         (payload) => {
+          console.log('Real-time change received:', payload); // For debugging
           if (payload.eventType === 'INSERT') {
             setSessions(currentSessions => {
               // Prevent duplicates if session was already added manually
@@ -116,7 +117,14 @@ export default function Dashboard() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Dashboard: Successfully subscribed to real-time session updates!');
+        }
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Dashboard: Real-time subscription error:', err);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
