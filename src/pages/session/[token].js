@@ -28,7 +28,9 @@ export default function QRPage({ token, session }) {
     }
     setError(null);
     try {
-      const res = await fetch("/api/session/approve", {
+      // Construct an absolute URL to ensure the request goes to the correct host
+      const apiUrl = new URL("/api/session/approve", window.location.origin);
+      const res = await fetch(apiUrl.href, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, fingerprint }),
