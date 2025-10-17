@@ -79,7 +79,8 @@
         });
 
         if (!res.ok) {
-          throw new Error("Failed to load session.");
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to load session.");
         }
 
         const data = await res.json();
@@ -145,7 +146,7 @@
 
       } catch (error) {
         console.error("QR Embed Error:", error);
-        showError("Could not load QR Code.");
+        showError(error.message || "Could not load QR Code.");
       }
     };
     document.head.appendChild(fpScript);

@@ -21,16 +21,20 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Embed token and fingerprint are required" });
   }
 
-  // 1. Verify the embed exists by its unique template_token
+  // 1. Verify the embed exists and is active
   const { data: embed, error: embedError } = await supabase
     .from('embeds')
-    .select('id')
+    .select('id, is_active')
     .eq('template_token', templateToken)
     .single();
 
   if (embedError || !embed) {
     console.error("Embed lookup failed:", embedError);
     return res.status(404).json({ error: "Embed configuration not found." });
+  }
+
+  if (!embed.is_active) {
+    return res.status(403).json({ error: "This embed is currently inactive." });
   }
 
   // 2. Try to find an existing session.

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import ToggleSwitch from "@/components/ToggleSwitch";
 
 export default function Dashboard() {
   const [embedName, setEmbedName] = useState("");
@@ -86,6 +87,26 @@ export default function Dashboard() {
     return `<script src="${origin}/embed.js" data-token="${embed.template_token}" data-host="${origin}" defer><\/script>`;
   };
 
+  const handleToggleEmbed = async (embedId, currentStatus) => {
+    const originalEmbeds = embeds;
+    setEmbeds(embeds.map(e => e.id === embedId ? { ...e, is_active: !currentStatus } : e));
+
+    try {
+      const res = await fetch('/api/embed/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: embedId, is_active: !currentStatus }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to toggle embed');
+      }
+    } catch (error) {
+      console.error("Error toggling embed:", error);
+      setEmbeds(originalEmbeds);
+    }
+  };
+
   const StatusPill = ({ state }) => {
     const stateStyles = {
       init: "bg-blue-100 text-blue-800",
@@ -132,8 +153,12 @@ export default function Dashboard() {
                     {embeds.map(embed => (
                       <li key={embed.id} className="py-3">
                         <div className="flex justify-between items-center">
-                          <p className="font-medium truncate pr-4">{embed.name}</p>
+                          <p className={`font-medium truncate pr-4 ${!embed.is_active ? 'text-gray-400' : ''}`}>{embed.name}</p>
                           <div className="flex items-center space-x-4 flex-shrink-0">
+                            <ToggleSwitch
+                              enabled={embed.is_active}
+                              onChange={() => handleToggleEmbed(embed.id, embed.is_active)}
+                            />
                             <a href={`/demo/${embed.template_token}`} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:underline">
                               Demo
                             </a>
