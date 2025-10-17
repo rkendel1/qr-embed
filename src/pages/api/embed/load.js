@@ -33,28 +33,33 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: "Embed configuration not found." });
   }
 
-  // 2. Look for an existing, unverified session for this device
-  const { data: existingSessions, error: existingSessionError } = await supabase
-    .from('sessions')
-    .select('token, qr_url')
-    .eq('embed_id', embed.id)
-    .eq('embed_fingerprint', fingerprint)
-    .in('state', ['init', 'scanned'])
-    .order('created_at', { ascending: false })
-    .limit(1);
+  // 2. Try to find an existing session.
+  try {
+    const { data: existingSessions, error: existingSessionError } = await supabase
+      .from('sessions')
+      .select('token, qr_url')
+      .eq('embed_id', embed.id)
+      .eq('embed_fingerprint', fingerprint)
+      .in('state', ['init', 'scanned'])
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-  if (existingSessionError) {
-    console.error("Error fetching existing session:", existingSessionError);
-    return res.status(500).json({ error: "Database error checking for session." });
+    if (existingSessionError) {
+      throw existingSessionError;
+    }
+
+    if (existingSessions && existingSessions.length > 0) {
+      const existingSession = existingSessions[0];
+      const qrDataUrl = await QRCode.toDataURL(existingSession.qr_url);
+      return res.status(200).json({ qrDataUrl, sessionToken: existingSession.token });
+    }
+  } catch (error) {
+    // The check failed. This is likely due to RLS policies.
+    // We will log a warning and proceed to create a new session anyway.
+    console.warn("Could not check for existing session. Proceeding to create a new one.", error.message);
   }
 
-  if (existingSessions && existingSessions.length > 0) {
-    const existingSession = existingSessions[0];
-    const qrDataUrl = await QRCode.toDataURL(existingSession.qr_url);
-    return res.status(200).json({ qrDataUrl, sessionToken: existingSession.token });
-  }
-
-  // 3. No active session found, so create a new one.
+  // 3. If we're here, no session was found OR the check failed. Create a new one.
   const sessionToken = uuidv4();
   const getOrigin = () => {
     if (process.env.NEXT_PUBLIC_APP_URL) {
@@ -81,6 +86,7 @@ export default async function handler(req, res) {
 
   if (insertError || !newSession) {
     console.error("Supabase insert error on load:", insertError);
+    // If the check failed and now the insert fails, the issue is with the database permissions (RLS).
     return res.status(500).json({ error: "Failed to create session." });
   }
 
