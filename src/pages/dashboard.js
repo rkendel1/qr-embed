@@ -29,11 +29,9 @@ export default function Dashboard() {
   const fetchSessions = useCallback(async () => {
     setLoading(prev => ({ ...prev, sessions: true }));
     try {
-      const { data, error } = await supabase
-        .from("sessions")
-        .select("*, embeds(name)") // Join to get embed name
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+      const res = await fetch('/api/session/list');
+      if (!res.ok) throw new Error('Failed to fetch sessions');
+      const data = await res.json();
       setSessions(data);
     } catch (error) {
       console.error("Error fetching sessions:", error);

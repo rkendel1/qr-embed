@@ -5,7 +5,7 @@ export default async function handler(req, res) {
 
   const { data: sessions, error } = await supabase
     .from("sessions")
-    .select("*")
+    .select("*, embeds(name)")
     .order("created_at", { ascending: false });
 
   if (error) {
