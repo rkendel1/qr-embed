@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
-export default function QRPage({ token, session }) {
+export default function QRPage({ token, session, sessionError }) {
   const [approved, setApproved] = useState(false);
   const [fingerprint, setFingerprint] = useState(null);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(sessionError);
 
   useEffect(() => {
+    if (sessionError) return; // Don't generate fingerprint if there's already an error
+
     async function generateFingerprint() {
       try {
         const FingerprintJS = (await import("fingerprintjs2")).default;
@@ -19,7 +21,7 @@ export default function QRPage({ token, session }) {
       }
     }
     generateFingerprint();
-  }, []);
+  }, [sessionError]);
 
   const handleApprove = async () => {
     if (!fingerprint) {
@@ -28,7 +30,6 @@ export default function QRPage({ token, session }) {
     }
     setError(null);
     try {
-      // Construct an absolute URL to ensure the request goes to the correct host
       const apiUrl = new URL("/api/session/approve", window.location.origin);
       const res = await fetch(apiUrl.href, {
         method: "POST",
@@ -37,27 +38,14 @@ export default function QRPage({ token, session }) {
       });
 
       if (!res.ok) {
-        let errorMsg = `Approval request failed with status: ${res.status}`;
-        try {
-          const errorJson = await res.json();
-          // Use the server's error message if available
-          if (errorJson.error) {
-            errorMsg = errorJson.error;
-          }
-        } catch (e) {
-          // Response was not JSON, do nothing extra
-        }
-        throw new Error(errorMsg);
+        const errorJson = await res.json().catch(() => ({}));
+        throw new Error(errorJson.error || `Approval request failed with status: ${res.status}`);
       }
 
       setApproved(true);
     } catch (error) {
       console.error("Approval failed:", error);
-      if (error.message && error.message.includes("SUPABASE_SERVICE_KEY")) {
-        setError("Could not approve connection due to a server configuration issue. Please contact support.");
-      } else {
-        setError(error.message);
-      }
+      setError(error.message);
     }
   };
 
@@ -65,19 +53,18 @@ export default function QRPage({ token, session }) {
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="p-8 bg-white rounded-lg shadow-md text-center max-w-sm w-full">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Approve Connection?</h2>
-        {approved ? (
+        {error ? (
+          <p className="text-red-600 bg-red-50 p-3 rounded-md">{error}</p>
+        ) : approved ? (
           <p className="text-green-600">Approved! You can close this window.</p>
         ) : (
-          <>
-            <button
-              onClick={handleApprove}
-              disabled={!fingerprint}
-              className="w-full px-4 py-2 text-lg font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              {fingerprint ? 'Approve' : 'Initializing...'}
-            </button>
-            {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-          </>
+          <button
+            onClick={handleApprove}
+            disabled={!fingerprint}
+            className="w-full px-4 py-2 text-lg font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            {fingerprint ? 'Approve' : 'Initializing...'}
+          </button>
         )}
       </div>
     </div>
@@ -87,6 +74,7 @@ export default function QRPage({ token, session }) {
 export async function getServerSideProps(context) {
   const { token } = context.params;
   const { req } = context;
+  let sessionError = null;
 
   let { data: session, error: fetchError } = await supabase
     .from("sessions")
@@ -99,19 +87,15 @@ export async function getServerSideProps(context) {
     return { notFound: true };
   }
 
-  // If the session is in a pre-scanned state, update it to 'scanned' via an API route
   if (session.state === 'init' || session.state === 'loaded') {
     try {
       const getOrigin = () => {
-        if (process.env.NEXT_PUBLIC_APP_URL) {
-          return process.env.NEXT_PUBLIC_APP_URL;
-        }
+        if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
         const protocol = req.headers['x-forwarded-proto'] || 'http';
         const host = req.headers.host;
         return `${protocol}://${host}`;
       };
-      const origin = getOrigin();
-      const scanApiUrl = `${origin}/api/session/scan`;
+      const scanApiUrl = `${getOrigin()}/api/session/scan`;
 
       const res = await fetch(scanApiUrl, {
         method: 'POST',
@@ -121,23 +105,25 @@ export async function getServerSideProps(context) {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        console.error("Error updating session to 'scanned':", errorData.error || 'API call failed');
-      } else {
-        // If successful, refetch the session to get the updated data
-        const { data: updatedSession, error: refetchError } = await supabase
-          .from("sessions")
-          .select("*")
-          .eq("token", token)
-          .single();
-        
-        if (!refetchError && updatedSession) {
-          session = updatedSession;
-        }
+        throw new Error(errorData.error || 'Failed to update session status.');
       }
+      
+      const { data: updatedSession, error: refetchError } = await supabase
+        .from("sessions")
+        .select("*")
+        .eq("token", token)
+        .single();
+      
+      if (refetchError || !updatedSession) {
+        throw new Error("Could not retrieve updated session information.");
+      }
+      session = updatedSession;
+
     } catch (e) {
-      console.error("Failed to call scan API:", e);
+      console.error("Failed during scan step:", e.message);
+      sessionError = e.message;
     }
   }
 
-  return { props: { token, session } };
+  return { props: { token, session, sessionError } };
 }

@@ -32,9 +32,9 @@ export default async function handler(req, res) {
 
   const session = sessions[0]; // Take the first one
 
-  // Check if the session is in a state that can be approved.
-  if (!['init', 'loaded', 'scanned'].includes(session.state)) {
-    return res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'.` });
+  // A session can only be approved if it has been scanned first.
+  if (session.state !== 'scanned') {
+    return res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'. It must be 'scanned'.` });
   }
 
   // Use the admin client to perform the update.
