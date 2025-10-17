@@ -12,14 +12,18 @@ export default function Dashboard() {
   const [newSessionToken, setNewSessionToken] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Update embed code whenever context changes
-  useEffect(() => {
+  const handleGenerateCode = useCallback(() => {
     const origin = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     const code = `<div id="qr-embed-container" data-context="${context}" data-host="${origin}"></div>
 <script src="${origin}/embed.js" defer><\/script>`;
     setEmbedCode(code);
     setCopied(false);
   }, [context]);
+
+  // Generate initial embed code on component mount
+  useEffect(() => {
+    handleGenerateCode();
+  }, [handleGenerateCode]);
 
   // Generate QR code data URL when a session's QR URL is selected
   useEffect(() => {
@@ -138,27 +142,37 @@ export default function Dashboard() {
               <label htmlFor="context" className="block text-sm font-medium text-gray-700">
                 Embed Context
               </label>
-              <input
-                type="text"
-                id="context"
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="e.g., marketing, support"
-              />
+              <div className="mt-1 flex rounded-md shadow-sm">
+                <input
+                  type="text"
+                  id="context"
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-l-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="e.g., marketing, support"
+                />
+                <button
+                  onClick={handleGenerateCode}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-r-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Generate
+                </button>
+              </div>
             </div>
             <p className="text-sm text-gray-500 mb-4">
               Paste this snippet into your website. A new session will be created and highlighted below as soon as a user visits the page.
             </p>
-            <div className="relative bg-gray-800 rounded-md p-4 text-white font-mono text-sm overflow-x-auto">
-              <button
-                onClick={() => handleCopy(embedCode, 'embed')}
-                className="absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-white font-sans text-xs font-bold py-1 px-2 rounded"
-              >
-                {copied ? "Copied!" : "Copy"}
-              </button>
-              <pre><code>{embedCode}</code></pre>
-            </div>
+            {embedCode && (
+              <div className="relative bg-gray-800 rounded-md p-4 text-white font-mono text-sm overflow-x-auto">
+                <button
+                  onClick={() => handleCopy(embedCode, 'embed')}
+                  className="absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-white font-sans text-xs font-bold py-1 px-2 rounded"
+                >
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+                <pre><code>{embedCode}</code></pre>
+              </div>
+            )}
           </div>
 
           <div className="mt-8">
