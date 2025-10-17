@@ -54,6 +54,13 @@
         const data = await res.json();
         displayQR(data.qrDataUrl);
 
+        // Dispatch a custom event with the session token
+        const event = new CustomEvent('qrEmbedLoaded', {
+          bubbles: true, // Ensure the event can be caught by parent elements
+          detail: { token: data.token }
+        });
+        qrContainer.dispatchEvent(event);
+
         // Optional: Set up SSE for real-time status updates on the embedded page
         const evtSource = new EventSource(`${apiHost}/api/events?token=${data.token}`);
         evtSource.onmessage = (e) => {

@@ -1,12 +1,36 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Head from 'next/head';
 
 export default function ConsumerPage() {
   const [pastedCode, setPastedCode] = useState('');
+  const [sessionId, setSessionId] = useState(null);
   const embedTargetRef = useRef(null);
+
+  useEffect(() => {
+    const embedContainer = embedTargetRef.current;
+
+    const handleEmbedLoad = (event) => {
+      if (event.detail && event.detail.token) {
+        setSessionId(event.detail.token);
+      }
+    };
+
+    if (embedContainer) {
+      embedContainer.addEventListener('qrEmbedLoaded', handleEmbedLoad);
+    }
+
+    return () => {
+      if (embedContainer) {
+        embedContainer.removeEventListener('qrEmbedLoaded', handleEmbedLoad);
+      }
+    };
+  }, []);
 
   const handleLoadEmbed = () => {
     if (!pastedCode || !embedTargetRef.current) return;
+
+    // Reset session ID when loading a new embed
+    setSessionId(null);
 
     // Clear previous content and remove the old script if it exists
     embedTargetRef.current.innerHTML = '';
@@ -73,6 +97,11 @@ export default function ConsumerPage() {
             </button>
 
             <h2 className="text-2xl font-semibold mt-8 mb-4">3. Live Preview</h2>
+            {sessionId && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm">
+                <p className="font-semibold text-blue-800">Session ID Loaded: <code className="font-mono bg-blue-100 p-1 rounded">{sessionId}</code></p>
+              </div>
+            )}
             <div className="border rounded-lg p-6 bg-gray-50 flex items-center justify-center min-h-[200px]">
               <div ref={embedTargetRef}>
                 <p className="text-gray-500">Embed will appear here after loading.</p>
