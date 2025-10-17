@@ -7,10 +7,14 @@ export default async function handler(req, res) {
 
   const { token } = req.query;
 
+  if (!token) {
+    return res.status(400).json({ error: "Token is required" });
+  }
+
   // Initial check to see if session exists
   const { data: initialSession, error: initialError } = await supabase
     .from("sessions")
-    .select("token")
+    .select("token, state")
     .eq("token", token)
     .single();
 
@@ -25,22 +29,34 @@ export default async function handler(req, res) {
     Connection: "keep-alive",
   });
 
-  const interval = setInterval(async () => {
-    const { data: currentSession, error } = await supabase
-      .from("sessions")
-      .select("state")
-      .eq("token", token)
-      .single();
-    
-    if (error) {
-      console.error(`Polling error for token ${token}:`, error);
-      return;
-    }
+  // Send the initial state immediately
+  res.write(`data: ${JSON.stringify({ state: initialSession.state })}\n\n`);
+  res.flush();
 
-    console.log(`Poll for token ${token}: state ${currentSession ? currentSession.state : 'no session'}`);
-    res.write(`data: ${JSON.stringify({ state: currentSession ? currentSession.state : 'unknown' })}\n\n`);
-    res.flush();
-  }, 1000);
+  const channel = supabase
+    .channel(`session-updates-${token}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'sessions',
+        filter: `token=eq.${token}`,
+      },
+      (payload) => {
+        console.log(`Real-time update for token ${token}: state ${payload.new.state}`);
+        res.write(`data: ${JSON.stringify({ state: payload.new.state })}\n\n`);
+        res.flush();
+      }
+    )
+    .subscribe((status, err) => {
+      if (err) {
+        console.error(`Subscription error for token ${token}:`, err);
+      }
+    });
 
-  req.on("close", () => clearInterval(interval));
+  req.on("close", () => {
+    console.log(`Client disconnected for token ${token}. Unsubscribing.`);
+    supabase.removeChannel(channel);
+  });
 }
