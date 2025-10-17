@@ -9,6 +9,7 @@ export default function Dashboard() {
   const [sessions, setSessions] = useState([]);
   const [copiedToken, setCopiedToken] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
+  const [newSessionToken, setNewSessionToken] = useState(null);
 
   // Generate QR code data URL when a session's QR URL is selected
   useEffect(() => {
@@ -57,6 +58,8 @@ export default function Dashboard() {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setSessions(currentSessions => [payload.new, ...currentSessions]);
+            setNewSessionToken(payload.new.token); // Highlight the new session
+            setTimeout(() => setNewSessionToken(null), 5000); // Remove highlight after 5 seconds
           } else if (payload.eventType === 'UPDATE') {
             setSessions(currentSessions =>
               currentSessions.map(s =>
@@ -150,8 +153,10 @@ export default function Dashboard() {
 
           {embedCode && (
             <div className="mt-8 bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Embed Code</h3>
-              <p className="text-sm text-gray-500 mb-2">Copy and paste this snippet into your website's HTML.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Your Embed Code</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Paste this snippet into your website. A new session will be created and highlighted in the "Live Sessions" list below as soon as a user visits the page.
+              </p>
               <div className="relative bg-gray-800 rounded-md p-4 text-white font-mono text-sm overflow-x-auto">
                 <button
                   onClick={() => handleCopy(embedCode, 'embed')}
@@ -169,7 +174,7 @@ export default function Dashboard() {
             <div className="bg-white shadow overflow-hidden sm:rounded-md">
               <ul className="divide-y divide-gray-200">
                 {sessions.length > 0 ? sessions.map((s) => (
-                  <li key={s.token}>
+                  <li key={s.token} className={`transition-colors duration-1000 ${s.token === newSessionToken ? 'bg-indigo-50' : 'bg-white'}`}>
                     <div className="px-4 py-4 sm:px-6">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-indigo-600 truncate">
@@ -209,7 +214,7 @@ export default function Dashboard() {
                     </div>
                   </li>
                 )) : (
-                  <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">No active sessions.</li>
+                  <li className="px-4 py-4 sm:px-6 text-sm text-gray-500">No active sessions. Paste your embed code on a site to see a session appear here.</li>
                 )}
               </ul>
             </div>
