@@ -34,24 +34,22 @@ export default async function handler(req, res) {
   }
 
   // 2. Look for an existing, unverified session for this device
-  const { data: existingSession, error: existingSessionError } = await supabase
+  const { data: existingSessions, error: existingSessionError } = await supabase
     .from('sessions')
     .select('token, qr_url')
     .eq('embed_id', embed.id)
     .eq('embed_fingerprint', fingerprint)
-    .in('state', ['init', 'scanned']) // Find sessions that are still active but not completed
+    .in('state', ['init', 'scanned'])
     .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+    .limit(1);
 
-  // A 'PGRST116' error means no row was found, which is expected if no session exists.
-  // We only want to error out on other, unexpected database errors.
-  if (existingSessionError && existingSessionError.code !== 'PGRST116') {
+  if (existingSessionError) {
     console.error("Error fetching existing session:", existingSessionError);
     return res.status(500).json({ error: "Database error checking for session." });
   }
 
-  if (existingSession) {
+  if (existingSessions && existingSessions.length > 0) {
+    const existingSession = existingSessions[0];
     // An active session already exists, so we'll reuse it.
     const qrDataUrl = await QRCode.toDataURL(existingSession.qr_url);
     return res.status(200).json({ qrDataUrl, sessionToken: existingSession.token });
