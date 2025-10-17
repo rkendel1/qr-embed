@@ -54,7 +54,7 @@ export default function Dashboard() {
   }, []);
 
   const handleCreateEmbed = () => {
-    const origin = window.location.origin;
+    const origin = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     const code = `<div id="qr-embed-container" data-context="${context}" data-host="${origin}"></div>
 <script src="${origin}/embed.js" defer><\/script>`;
     setEmbedCode(code);
