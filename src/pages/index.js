@@ -12,43 +12,59 @@ export default function Home() {
     initializedRef.current = true;
 
     async function initSession() {
-      // FingerprintJS
-      const FingerprintJS = (await import("fingerprintjs2")).default;
-      const components = await FingerprintJS.getPromise();
-      const fingerprint = components.map(c => c.value).join("");
+      try {
+        // FingerprintJS
+        const FingerprintJS = (await import("fingerprintjs2")).default;
+        const components = await FingerprintJS.getPromise();
+        const fingerprint = components.map(c => c.value).join("");
 
-      const res = await fetch("/api/session/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fingerprint }),
-      });
+        const res = await fetch("/api/session/init", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fingerprint }),
+        });
 
-      const data = await res.json();
-      setSession(data);
-
-      setQrDataUrl(data.qrDataUrl);
-      setStatus("QR Ready - Scan to connect");
-
-      // SSE listener
-      if (evtSourceRef.current) {
-        evtSourceRef.current.close();
-      }
-      const evtSource = new EventSource(`/api/events?token=${data.token}`);
-      evtSourceRef.current = evtSource;
-      evtSource.onerror = (e) => {
-        console.log('SSE error:', e);
-      };
-      evtSource.onmessage = e => {
-        console.log('Received SSE event:', e.data);
-        const event = JSON.parse(e.data);
-        if (event.state === "verified") {
-          setStatus("Connected!");
-          evtSource.close();
-          evtSourceRef.current = null;
-        } else {
-          setStatus(event.state);
+        if (!res.ok) {
+          const errorBody = await res.text();
+          console.error("Failed to initialize session:", res.status, errorBody);
+          setStatus(`Error: Failed to initialize session. Server responded with ${res.status}.`);
+          return;
         }
-      };
+
+        const data = await res.json();
+        if (data.error) {
+          setStatus(`Error from API: ${data.error}`);
+          return;
+        }
+
+        setSession(data);
+        setQrDataUrl(data.qrDataUrl);
+        setStatus("QR Ready - Scan to connect");
+
+        // SSE listener
+        if (evtSourceRef.current) {
+          evtSourceRef.current.close();
+        }
+        const evtSource = new EventSource(`/api/events?token=${data.token}`);
+        evtSourceRef.current = evtSource;
+        evtSource.onerror = (e) => {
+          console.log('SSE error:', e);
+        };
+        evtSource.onmessage = e => {
+          console.log('Received SSE event:', e.data);
+          const event = JSON.parse(e.data);
+          if (event.state === "verified") {
+            setStatus("Connected!");
+            evtSource.close();
+            evtSourceRef.current = null;
+          } else {
+            setStatus(event.state);
+          }
+        };
+      } catch (error) {
+        console.error("Error during session initialization:", error);
+        setStatus(`An unexpected error occurred: ${error.message}`);
+      }
     }
 
     initSession();
@@ -61,12 +77,10 @@ export default function Home() {
     };
   }, []);
 
-  if (!session) return <div>Loading embed...</div>;
-
   return (
     <div style={{ padding: 20, fontFamily: "sans-serif" }}>
       <h2>Embed Demo</h2>
-      <p>Session ID: {session?.token}</p>
+      {session && <p>Session ID: {session.token}</p>}
       <p>Session status: {status}</p>
       <div id="qr">
         {qrDataUrl && <img src={qrDataUrl} style={{ width: "150px" }} alt="QR Code for session" />}
