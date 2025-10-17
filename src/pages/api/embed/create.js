@@ -15,7 +15,7 @@ export default async function handler(req, res) {
 
   const { data: embed, error: embedError } = await supabase
     .from('embeds')
-    .insert({ name, template_token: token })
+    .insert({ name, template_token: token, is_active: true })
     .select()
     .single();
 
