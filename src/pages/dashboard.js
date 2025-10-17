@@ -155,57 +155,25 @@ export default function Dashboard() {
             </button>
           </div>
         )}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1 space-y-8">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Create New Embed</h2>
-              <div className="flex rounded-md shadow-sm">
-                <input
-                  type="text"
-                  value={embedName}
-                  onChange={(e) => setEmbedName(e.target.value)}
-                  className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-l-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="e.g., Marketing Campaign"
-                  onKeyDown={(e) => e.key === 'Enter' && handleGenerateEmbed()}
-                />
-                <button onClick={handleGenerateEmbed} disabled={generating || !embedName.trim()} className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-r-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400">
-                  {generating ? '...' : 'Create'}
-                </button>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">My Embeds</h2>
-              {loading.embeds ? <p className="text-sm text-gray-500">Loading embeds...</p> :
-                embeds.length > 0 ? (
-                  <ul className="divide-y divide-gray-200">
-                    {embeds.map(embed => (
-                      <li key={embed.id} className="py-3">
-                        <div className="flex justify-between items-center">
-                          <p className={`font-medium truncate pr-4 ${!embed.is_active ? 'text-gray-400' : ''}`}>{embed.name}</p>
-                          <div className="flex items-center space-x-4 flex-shrink-0">
-                            <ToggleSwitch
-                              enabled={embed.is_active}
-                              onChange={() => handleToggleEmbed(embed.id, embed.is_active)}
-                            />
-                            <a href={`/demo/${embed.template_token}`} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:underline">
-                              Demo
-                            </a>
-                            <button onClick={() => handleCopy(getEmbedCode(embed), `embed-code-${embed.id}`)} className="text-sm text-indigo-600 hover:underline">
-                              {copied === `embed-code-${embed.id}` ? 'Copied!' : 'Code'}
-                            </button>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-500">No embeds created yet.</p>
-                )
-              }
+        <div className="space-y-8">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Create New Embed</h2>
+            <div className="flex rounded-md shadow-sm">
+              <input
+                type="text"
+                value={embedName}
+                onChange={(e) => setEmbedName(e.target.value)}
+                className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-l-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="e.g., Marketing Campaign"
+                onKeyDown={(e) => e.key === 'Enter' && handleGenerateEmbed()}
+              />
+              <button onClick={handleGenerateEmbed} disabled={generating || !embedName.trim()} className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-r-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400">
+                {generating ? '...' : 'Create'}
+              </button>
             </div>
           </div>
 
-          <div className="lg:col-span-2">
+          <div>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-medium text-gray-900">Live Sessions</h2>
               <button onClick={fetchSessions} disabled={loading.sessions} className="px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
