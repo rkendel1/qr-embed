@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
 import { supabase } from "@/lib/supabase";
+import { v4 as uuidv4 } from "uuid";
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,34 +21,69 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Template token and fingerprint are required" });
   }
 
-  // 1. Find the session using the token from the embed.
-  // The templateToken IS the sessionToken in this new logic.
-  const { data: session, error: sessionError } = await supabase
-    .from('sessions')
-    .select('qr_url, state, embed_fingerprint')
-    .eq('token', templateToken)
+  // 1. Verify the embed exists
+  const { data: embed, error: embedError } = await supabase
+    .from('embeds')
+    .select('id')
+    .eq('template_token', templateToken)
     .single();
 
-  if (sessionError || !session) {
-    console.error("Session lookup failed:", sessionError);
-    return res.status(404).json({ error: "Session for this embed not found." });
+  if (embedError || !embed) {
+    console.error("Embed lookup failed:", embedError);
+    return res.status(404).json({ error: "Embed configuration not found." });
   }
 
-  // 2. Update the session with the browser fingerprint if it hasn't been set yet.
-  // This makes the load operation idempotent for the same browser.
-  if (!session.embed_fingerprint) {
-    const { error: updateError } = await supabase
-      .from('sessions')
-      .update({ embed_fingerprint: fingerprint })
-      .eq('token', templateToken);
+  // 2. Look for an existing, unverified session for this device
+  const { data: existingSessions, error: existingSessionError } = await supabase
+    .from('sessions')
+    .select('token, qr_url')
+    .eq('embed_id', embed.id)
+    .eq('embed_fingerprint', fingerprint)
+    .in('state', ['init', 'scanned'])
+    .order('created_at', { ascending: false })
+    .limit(1);
 
-    if (updateError) {
-      console.error("Failed to update session with fingerprint:", updateError);
-      return res.status(500).json({ error: "Failed to initialize session." });
+  if (existingSessionError) {
+    console.error("Error fetching existing session:", existingSessionError);
+    return res.status(500).json({ error: "Database error checking for session." });
+  }
+
+  if (existingSessions && existingSessions.length > 0) {
+    const existingSession = existingSessions[0];
+    const qrDataUrl = await QRCode.toDataURL(existingSession.qr_url);
+    return res.status(200).json({ qrDataUrl, sessionToken: existingSession.token });
+  }
+
+  // 3. No active session found, so create a new one.
+  const sessionToken = uuidv4();
+  const getOrigin = () => {
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+      return process.env.NEXT_PUBLIC_APP_URL;
     }
+    const protocol = req.headers['x-forwarded-proto'] || 'http';
+    const host = req.headers.host;
+    return `${protocol}://${host}`;
+  };
+  const origin = getOrigin();
+  const qrUrl = `${origin}/session/${sessionToken}`;
+
+  const { data: newSession, error: insertError } = await supabase
+    .from("sessions")
+    .insert({
+      token: sessionToken,
+      state: "init",
+      embed_id: embed.id,
+      embed_fingerprint: fingerprint,
+      qr_url: qrUrl,
+    })
+    .select()
+    .single();
+
+  if (insertError || !newSession) {
+    console.error("Supabase insert error on load:", insertError);
+    return res.status(500).json({ error: "Failed to create session." });
   }
 
-  // 3. Generate the QR code from the stored URL and return it.
-  const qrDataUrl = await QRCode.toDataURL(session.qr_url);
-  res.status(200).json({ qrDataUrl, sessionToken: templateToken });
+  const qrDataUrl = await QRCode.toDataURL(qrUrl);
+  res.status(200).json({ qrDataUrl, sessionToken: newSession.token });
 }
