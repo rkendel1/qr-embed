@@ -97,7 +97,15 @@ export default function Dashboard() {
   const handleToggleEmbed = async (embedId, currentStatus) => {
     setError(null);
     const originalEmbeds = embeds;
+    const originalSessions = sessions;
+
     setEmbeds(embeds.map(e => e.id === embedId ? { ...e, is_active: !currentStatus } : e));
+    setSessions(sessions.map(s => {
+      if (s.embeds && s.embeds.id === embedId) {
+        return { ...s, embeds: { ...s.embeds, is_active: !currentStatus } };
+      }
+      return s;
+    }));
 
     try {
       const res = await fetch('/api/embed/toggle', {
@@ -114,6 +122,7 @@ export default function Dashboard() {
       console.error("Error toggling embed:", error);
       setError(error.message);
       setEmbeds(originalEmbeds);
+      setSessions(originalSessions);
     }
   };
 
@@ -214,6 +223,7 @@ export default function Dashboard() {
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -231,6 +241,24 @@ export default function Dashboard() {
                                 {s.scanned_at && <p>Scanned: <p className="text-xs bg-gray-100 p-1 rounded">{new Date(s.scanned_at).toLocaleTimeString()}</p></p>}
                                 {s.verified_at && <p>Verified: <p className="text-xs bg-gray-100 p-1 rounded">{new Date(s.verified_at).toLocaleTimeString()}</p></p>}
                               </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {s.embeds ? (
+                                <div className="flex items-center space-x-4">
+                                  <ToggleSwitch
+                                    enabled={s.embeds.is_active}
+                                    onChange={() => handleToggleEmbed(s.embeds.id, s.embeds.is_active)}
+                                  />
+                                  <a href={`/demo/${s.embeds.template_token}`} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:underline">
+                                    Demo
+                                  </a>
+                                  <button onClick={() => handleCopy(getEmbedCode(s.embeds), `session-code-${s.token}`)} className="text-sm text-indigo-600 hover:underline">
+                                    {copied === `session-code-${s.token}` ? 'Copied!' : 'Code'}
+                                  </button>
+                                </div>
+                              ) : (
+                                <span>-</span>
+                              )}
                             </td>
                           </tr>
                         ))}
