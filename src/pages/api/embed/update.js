@@ -21,9 +21,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid active path.' });
   }
 
+  const updateData = {
+    success_url_a: success_url_a ? success_url_a.trim() : '',
+    success_url_b: success_url_b ? success_url_b.trim() : '',
+    active_path,
+  };
+
   const { data, error } = await supabaseAdmin
     .from('embeds')
-    .update({ success_url_a, success_url_b, active_path })
+    .update(updateData)
     .eq('id', id)
     .select()
     .single();

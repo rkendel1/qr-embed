@@ -17,7 +17,9 @@ const getSuccessUrlForEmbed = async (embedId) => {
   
   if (embedData) {
     const url = embedData.active_path === 'B' ? embedData.success_url_b : embedData.success_url_a;
-    return url || null;
+    if (url && url.trim()) {
+      return url.trim();
+    }
   }
 
   return null;

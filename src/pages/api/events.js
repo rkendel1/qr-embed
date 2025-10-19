@@ -68,12 +68,12 @@ export default async function handler(req, res) {
             if (embedError) {
               console.error(`Error fetching embed for session ${token}:`, embedError);
             } else if (embedData) {
-              const successUrl = embedData.active_path === 'B' 
+              const url = embedData.active_path === 'B' 
                 ? embedData.success_url_b 
                 : embedData.success_url_a;
               
-              if (successUrl) {
-                eventData.successUrl = successUrl;
+              if (url && url.trim()) {
+                eventData.successUrl = url.trim();
               }
             }
           } catch (e) {
