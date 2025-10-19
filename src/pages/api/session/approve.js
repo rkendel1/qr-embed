@@ -67,7 +67,7 @@ export default async function handler(req, res) {
     .from("sessions")
     .update({ state: "verified", mobile_fingerprint: fingerprint, verified_at: new Date().toISOString() })
     .eq("token", token)
-    .select('id, embed_id')
+    .select('embed_id')
     .single();
 
   if (updateError) {

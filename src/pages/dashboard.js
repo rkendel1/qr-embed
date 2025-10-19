@@ -293,7 +293,7 @@ export default function Dashboard() {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {sessions.map((session) => (
-                          <tr key={session.id}>
+                          <tr key={session.token}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{session.embeds?.name || 'N/A'}</td>
                             <td className="px-6 py-4 whitespace-nowrap"><StatusPill state={session.state} /></td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(session.created_at).toLocaleString()}</td>
