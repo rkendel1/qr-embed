@@ -13,7 +13,8 @@ export default function QRPage({ token, session, sessionError }) {
       try {
         const FingerprintJS = (await import("fingerprintjs2")).default;
         const components = await FingerprintJS.getPromise();
-        const fp = components.map(c => c.value).join("");
+        const values = components.map(c => c.value);
+        const fp = FingerprintJS.x64hash128(values.join(""), 31);
         setFingerprint(fp);
       } catch (err) {
         console.error("Fingerprint generation failed:", err);

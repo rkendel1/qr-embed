@@ -1,33 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-const resolveSuccessUrl = async (embedId, userAgent) => {
-  if (!embedId) return null;
-
-  const { data: embed, error } = await supabase
-    .from('embeds')
-    .select('success_url_a, success_url_b, active_path')
-    .eq('id', embedId)
-    .single();
-
-  if (error) {
-    console.warn(`Could not fetch embed data for embed ID ${embedId}:`, error.message);
-    return null;
-  }
-  
-  if (!embed) return null;
-
-  let chosenPath = embed.active_path;
-  
-  const url = chosenPath === 'B' ? embed.success_url_b : embed.success_url_a;
-
-  if (url && url.trim()) {
-    return url.trim();
-  }
-
-  return null;
-};
-
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -40,16 +13,15 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== "POST") return res.status(405).end();
-  const { token, fingerprint } = req.body;
-  const userAgent = req.headers['user-agent'] || '';
+  const { token, fingerprint: mobileFingerprint } = req.body;
 
-  if (!token || !fingerprint) {
+  if (!token || !mobileFingerprint) {
     return res.status(400).json({ error: "Token and fingerprint are required" });
   }
 
   const { data: session, error: fetchError } = await supabase
     .from("sessions")
-    .select("state, embed_id, resolved_success_url")
+    .select("state, embed_id, resolved_success_url, fingerprint") // 'fingerprint' is the desktop one
     .eq("token", token)
     .single();
 
@@ -66,13 +38,37 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'. It must be 'scanned'.` });
   }
 
-  const successUrl = await resolveSuccessUrl(session.embed_id, userAgent);
+  let successUrl = null;
+  const { data: embed, error: embedError } = await supabase
+    .from('embeds')
+    .select('success_url_a, success_url_b, active_path, routing_rule')
+    .eq('id', session.embed_id)
+    .single();
+
+  if (embedError || !embed) {
+    console.warn(`Could not fetch embed data for embed ID ${session.embed_id}:`, embedError?.message);
+  } else {
+    if (embed.routing_rule === 'device_parity') {
+      const desktopFingerprint = session.fingerprint;
+      // Path A for different devices (success), Path B for same device (warning/alternative)
+      successUrl = desktopFingerprint !== mobileFingerprint ? embed.success_url_a : embed.success_url_b;
+    } else {
+      // Fallback to default path logic
+      successUrl = embed.active_path === 'B' ? embed.success_url_b : embed.success_url_a;
+    }
+    
+    if (successUrl && successUrl.trim()) {
+      successUrl = successUrl.trim();
+    } else {
+      successUrl = null;
+    }
+  }
 
   const { error: updateError } = await supabaseAdmin
     .from("sessions")
     .update({ 
       state: "verified", 
-      mobile_fingerprint: fingerprint, 
+      mobile_fingerprint: mobileFingerprint, 
       verified_at: new Date().toISOString(),
       resolved_success_url: successUrl,
     })
