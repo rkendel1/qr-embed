@@ -1,6 +1,28 @@
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
+const getSuccessUrlForEmbed = async (embedId) => {
+  if (!embedId) return null;
+
+  const { data: embedData, error: embedError } = await supabase
+    .from('embeds')
+    .select('success_url_a, success_url_b, active_path')
+    .eq('id', embedId)
+    .single();
+
+  if (embedError) {
+    console.warn(`Could not fetch embed data for embed ID ${embedId}:`, embedError.message);
+    return null;
+  }
+  
+  if (embedData) {
+    const url = embedData.active_path === 'B' ? embedData.success_url_b : embedData.success_url_a;
+    return url || null;
+  }
+
+  return null;
+};
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -21,7 +43,7 @@ export default async function handler(req, res) {
 
   const { data: session, error: fetchError } = await supabase
     .from("sessions")
-    .select("state")
+    .select("state, embed_id")
     .eq("token", token)
     .single();
 
@@ -30,6 +52,13 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: "Session not found." });
   }
 
+  // If already verified, it's a success. Just return the redirect URL.
+  if (session.state === 'verified') {
+    const successUrl = await getSuccessUrlForEmbed(session.embed_id);
+    return res.status(200).json({ status: "ok", successUrl });
+  }
+
+  // If it's not in a state that can be approved, it's an error.
   if (session.state !== 'scanned') {
     return res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'. It must be 'scanned'.` });
   }
@@ -51,23 +80,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Failed to approve session. The update was not applied." });
   }
 
-  let successUrl = null;
-  if (updatedSession.embed_id) {
-    const { data: embedData, error: embedError } = await supabase
-      .from('embeds')
-      .select('success_url_a, success_url_b, active_path')
-      .eq('id', updatedSession.embed_id)
-      .single();
-
-    if (embedError) {
-      console.warn(`Could not fetch embed data for session ${token}:`, embedError.message);
-    } else if (embedData) {
-      const url = embedData.active_path === 'B' ? embedData.success_url_b : embedData.success_url_a;
-      if (url) {
-        successUrl = url;
-      }
-    }
-  }
-
+  const successUrl = await getSuccessUrlForEmbed(updatedSession.embed_id);
   res.status(200).json({ status: "ok", successUrl });
 }
