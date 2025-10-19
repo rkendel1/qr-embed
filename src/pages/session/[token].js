@@ -92,7 +92,6 @@ export default function QRPage({ token, session, sessionError }) {
 
 export async function getServerSideProps(context) {
   const { token } = context.params;
-  const { req } = context;
   let sessionError = null;
 
   let { data: session, error: fetchError } = await supabase
@@ -106,15 +105,13 @@ export async function getServerSideProps(context) {
     return { notFound: true };
   }
 
-  if (session.state === 'init' || session.state === 'loaded') {
+  const origin = process.env.NEXT_PUBLIC_APP_URL;
+  if (!origin) {
+    console.error("CRITICAL: NEXT_PUBLIC_APP_URL is not set. This is required for session scanning.");
+    sessionError = "Server configuration error: App URL not specified.";
+  } else if (session.state === 'init' || session.state === 'loaded') {
     try {
-      const getOrigin = () => {
-        if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-        const protocol = req.headers['x-forwarded-proto'] || 'http';
-        const host = req.headers.host;
-        return `${protocol}://${host}`;
-      };
-      const scanApiUrl = `${getOrigin()}/api/session/scan`;
+      const scanApiUrl = `${origin}/api/session/scan`;
 
       const res = await fetch(scanApiUrl, {
         method: 'POST',

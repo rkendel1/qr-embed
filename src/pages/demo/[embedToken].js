@@ -6,7 +6,7 @@ export default function DemoPage({ embed, origin }) {
   if (!embed) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-500">Embed not found.</p>
+        <p className="text-red-500">Embed not found or server is misconfigured.</p>
       </div>
     );
   }
@@ -60,7 +60,6 @@ export default function DemoPage({ embed, origin }) {
 
 export async function getServerSideProps(context) {
   const { embedToken } = context.params;
-  const { req } = context;
 
   if (!embedToken) {
     return { notFound: true };
@@ -77,15 +76,11 @@ export async function getServerSideProps(context) {
     return { notFound: true };
   }
 
-  const getOrigin = () => {
-    if (process.env.NEXT_PUBLIC_APP_URL) {
-      return process.env.NEXT_PUBLIC_APP_URL;
-    }
-    const protocol = req.headers['x-forwarded-proto'] || 'http';
-    const host = req.headers.host;
-    return `${protocol}://${host}`;
-  };
-  const origin = getOrigin();
+  const origin = process.env.NEXT_PUBLIC_APP_URL;
+  if (!origin) {
+    console.error("Demo page requires NEXT_PUBLIC_APP_URL to be set.");
+    return { props: { embed: null, origin: null } };
+  }
 
   return {
     props: {

@@ -59,15 +59,14 @@ export default async function handler(req, res) {
 
   // 3. If we're here, no session was found OR the check failed. Create a new one.
   const sessionToken = uuidv4();
-  const getOrigin = () => {
-    if (process.env.NEXT_PUBLIC_APP_URL) {
-      return process.env.NEXT_PUBLIC_APP_URL;
-    }
-    const protocol = req.headers['x-forwarded-proto'] || 'http';
-    const host = req.headers.host;
-    return `${protocol}://${host}`;
-  };
-  const origin = getOrigin();
+  const origin = process.env.NEXT_PUBLIC_APP_URL;
+
+  if (!origin) {
+    const errorMessage = "Server configuration error: NEXT_PUBLIC_APP_URL is not set. This is required for QR code generation.";
+    console.error(errorMessage);
+    return res.status(500).json({ error: errorMessage });
+  }
+  
   const qrUrl = `${origin}/session/${sessionToken}`;
 
   const { data: newSession, error: insertError } = await supabase
