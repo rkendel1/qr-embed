@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin"; // Use admin client for server-side fetch
+import { supabase } from "@/lib/supabase"; // Keep for potential client-side use if needed
 
 export default function QRPage({ token, session, sessionError }) {
   const [approved, setApproved] = useState(false);
@@ -94,14 +95,15 @@ export async function getServerSideProps(context) {
   const { token } = context.params;
   let sessionError = null;
 
-  let { data: session, error: fetchError } = await supabase
+  // Use the admin client to bypass RLS for this critical server-side lookup
+  let { data: session, error: fetchError } = await supabaseAdmin
     .from("sessions")
     .select("*")
     .eq("token", token)
     .single();
 
   if (fetchError || !session) {
-    console.error("Error fetching session:", fetchError);
+    console.error("Error fetching session with admin client:", fetchError);
     return { notFound: true };
   }
 
@@ -124,7 +126,8 @@ export async function getServerSideProps(context) {
         throw new Error(errorData.error || 'Failed to update session status.');
       }
       
-      const { data: updatedSession, error: refetchError } = await supabase
+      // Re-fetch the session to get the updated state
+      const { data: updatedSession, error: refetchError } = await supabaseAdmin
         .from("sessions")
         .select("*")
         .eq("token", token)
@@ -141,5 +144,5 @@ export async function getServerSideProps(context) {
     }
   }
 
-  return { props: { token, session, sessionError } };
+  return { props: { token, session: JSON.parse(JSON.stringify(session)), sessionError } };
 }

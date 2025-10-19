@@ -1,3 +1,4 @@
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { supabase } from "@/lib/supabase";
 
 export default async function handler(req, res) {
@@ -15,7 +16,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Token is required" });
   }
 
-  const { data: initialSession, error: initialError } = await supabase
+  // Use admin client to bypass RLS for the initial lookup
+  const { data: initialSession, error: initialError } = await supabaseAdmin
     .from("sessions")
     .select("token, state")
     .eq("token", token)

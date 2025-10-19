@@ -1,4 +1,3 @@
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export default async function handler(req, res) {
@@ -19,9 +18,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Token and fingerprint are required" });
   }
 
-  const { data: session, error: fetchError } = await supabase
+  // Use admin client to bypass RLS for the initial lookup
+  const { data: session, error: fetchError } = await supabaseAdmin
     .from("sessions")
-    .select("state, embed_id, resolved_success_url, fingerprint") // 'fingerprint' is the desktop one
+    .select("state, embed_id, resolved_success_url, fingerprint, embeds(success_url_a, success_url_b, active_path, routing_rule)")
     .eq("token", token)
     .single();
 
@@ -39,23 +39,17 @@ export default async function handler(req, res) {
   }
 
   let successUrl = null;
-  const { data: embed, error: embedError } = await supabase
-    .from('embeds')
-    .select('success_url_a, success_url_b, active_path, routing_rule')
-    .eq('id', session.embed_id)
-    .single();
+  const embed = session.embeds;
 
-  if (embedError || !embed) {
-    console.warn(`Could not fetch embed data for embed ID ${session.embed_id}:`, embedError?.message);
+  if (!embed) {
+    console.warn(`Could not find embed data for session ${token}`);
   } else {
     if (embed.routing_rule === 'device_parity') {
       const desktopFingerprint = session.fingerprint;
-      // Path A for different devices (success), Path B for same device (warning/alternative)
       successUrl = desktopFingerprint !== mobileFingerprint ? embed.success_url_a : embed.success_url_b;
     } else if (embed.routing_rule === 'split_test') {
       successUrl = Math.random() < 0.5 ? embed.success_url_a : embed.success_url_b;
     } else {
-      // Fallback to default path logic for 'none'
       successUrl = embed.active_path === 'B' ? embed.success_url_b : embed.success_url_a;
     }
     
