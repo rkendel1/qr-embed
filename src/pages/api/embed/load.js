@@ -33,31 +33,7 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "This embed is currently inactive." });
   }
 
-  // 2. Try to find an existing session.
-  try {
-    const { data: existingSessions, error: existingSessionError } = await supabase
-      .from('sessions')
-      .select('token, qr_url')
-      .eq('embed_id', embed.id)
-      .eq('fingerprint', fingerprint)
-      .in('state', ['init', 'loaded', 'scanned'])
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (existingSessionError) {
-      throw existingSessionError;
-    }
-
-    if (existingSessions && existingSessions.length > 0) {
-      const existingSession = existingSessions[0];
-      const qrDataUrl = await QRCode.toDataURL(existingSession.qr_url);
-      return res.status(200).json({ qrDataUrl, sessionToken: existingSession.token });
-    }
-  } catch (error) {
-    console.warn("Could not check for existing session. Proceeding to create a new one.", error.message);
-  }
-
-  // 3. If we're here, no session was found OR the check failed. Create a new one.
+  // 2. Always create a new session to ensure consistency.
   const sessionToken = uuidv4();
   const origin = process.env.NEXT_PUBLIC_APP_URL;
 
@@ -73,7 +49,7 @@ export default async function handler(req, res) {
     .from("sessions")
     .insert({
       token: sessionToken,
-      state: "loaded", // Create in "loaded" state directly
+      state: "loaded",
       embed_id: embed.id,
       fingerprint: fingerprint,
       qr_url: qrUrl,
