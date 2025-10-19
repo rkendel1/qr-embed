@@ -37,12 +37,17 @@ export default function QRPage({ token, session, sessionError }) {
         body: JSON.stringify({ token, fingerprint }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const errorJson = await res.json().catch(() => ({}));
-        throw new Error(errorJson.error || `Approval request failed with status: ${res.status}`);
+        throw new Error(data.error || `Approval request failed with status: ${res.status}`);
       }
 
-      setApproved(true);
+      if (data.successUrl) {
+        window.location.href = data.successUrl;
+      } else {
+        setApproved(true);
+      }
     } catch (error) {
       console.error("Approval failed:", error);
       if (error.message && error.message.includes("SUPABASE_SERVICE_KEY")) {

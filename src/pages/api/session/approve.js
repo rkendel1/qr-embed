@@ -19,40 +19,55 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Token and fingerprint are required" });
   }
 
-  // First, let's check if the session even exists using the public client.
-  const { data: sessions, error: fetchError } = await supabase
+  const { data: session, error: fetchError } = await supabase
     .from("sessions")
     .select("state")
-    .eq("token", token);
+    .eq("token", token)
+    .single();
 
-  if (fetchError || !sessions || sessions.length === 0) {
+  if (fetchError || !session) {
     console.error("Supabase fetch error on approve:", fetchError);
     return res.status(404).json({ error: "Session not found." });
   }
 
-  const session = sessions[0]; // Take the first one
-
-  // A session can only be approved if it has been scanned first.
   if (session.state !== 'scanned') {
     return res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'. It must be 'scanned'.` });
   }
 
-  // Use the admin client to perform the update.
-  const { data: updatedSessions, error: updateError } = await supabaseAdmin
+  const { data: updatedSession, error: updateError } = await supabaseAdmin
     .from("sessions")
     .update({ state: "verified", mobile_fingerprint: fingerprint, verified_at: new Date().toISOString() })
     .eq("token", token)
-    .select();
+    .select('id, embed_id')
+    .single();
 
   if (updateError) {
     console.error("Supabase update error:", updateError);
     return res.status(500).json({ error: `Failed to approve session: ${updateError.message}` });
   }
 
-  if (!updatedSessions || updatedSessions.length === 0) {
+  if (!updatedSession) {
     console.error("Session update failed. No rows were updated, possibly due to RLS policy.");
     return res.status(500).json({ error: "Failed to approve session. The update was not applied." });
   }
 
-  res.status(200).json({ status: "ok" });
+  let successUrl = null;
+  if (updatedSession.embed_id) {
+    const { data: embedData, error: embedError } = await supabase
+      .from('embeds')
+      .select('success_url_a, success_url_b, active_path')
+      .eq('id', updatedSession.embed_id)
+      .single();
+
+    if (embedError) {
+      console.warn(`Could not fetch embed data for session ${token}:`, embedError.message);
+    } else if (embedData) {
+      const url = embedData.active_path === 'B' ? embedData.success_url_b : embedData.success_url_a;
+      if (url) {
+        successUrl = url;
+      }
+    }
+  }
+
+  res.status(200).json({ status: "ok", successUrl });
 }
