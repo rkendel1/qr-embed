@@ -7,6 +7,7 @@ function EditEmbedForm({ embed, onSave, onCancel }) {
     success_url_a: embed.success_url_a || '',
     success_url_b: embed.success_url_b || '',
     active_path: embed.active_path || 'A',
+    routing_rule: embed.routing_rule || 'none',
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -55,11 +56,25 @@ function EditEmbedForm({ embed, onSave, onCancel }) {
         </div>
       </div>
       <div>
-        <span className="block text-sm font-medium text-gray-700 mb-2">Active Path</span>
+        <span className="block text-sm font-medium text-gray-700 mb-2">Default Active Path</span>
         <div className="flex items-center space-x-4">
           <button type="button" onClick={() => handlePathChange('A')} className={`px-4 py-2 text-sm font-medium rounded-md ${formData.active_path === 'A' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border'}`}>Path A</button>
           <button type="button" onClick={() => handlePathChange('B')} className={`px-4 py-2 text-sm font-medium rounded-md ${formData.active_path === 'B' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border'}`}>Path B</button>
         </div>
+      </div>
+       <div>
+        <label htmlFor={`routing_rule_${embed.id}`} className="block text-sm font-medium text-gray-700">Routing Rule</label>
+        <select
+          id={`routing_rule_${embed.id}`}
+          name="routing_rule"
+          value={formData.routing_rule}
+          onChange={handleChange}
+          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+        >
+          <option value="none">None (use default active path)</option>
+          <option value="safari_A">Safari users get Path A, others get Path B</option>
+          <option value="safari_B">Safari users get Path B, others get Path A</option>
+        </select>
       </div>
       <div className="flex justify-end space-x-2 pt-2">
         <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>

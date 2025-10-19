@@ -1,25 +1,35 @@
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-const getSuccessUrlForEmbed = async (embedId) => {
+const resolveSuccessUrl = async (embedId, userAgent) => {
   if (!embedId) return null;
 
-  const { data: embedData, error: embedError } = await supabase
+  const { data: embed, error } = await supabase
     .from('embeds')
-    .select('success_url_a, success_url_b, active_path')
+    .select('success_url_a, success_url_b, active_path, routing_rule')
     .eq('id', embedId)
     .single();
 
-  if (embedError) {
-    console.warn(`Could not fetch embed data for embed ID ${embedId}:`, embedError.message);
+  if (error) {
+    console.warn(`Could not fetch embed data for embed ID ${embedId}:`, error.message);
     return null;
   }
   
-  if (embedData) {
-    const url = embedData.active_path === 'B' ? embedData.success_url_b : embedData.success_url_a;
-    if (url && url.trim()) {
-      return url.trim();
-    }
+  if (!embed) return null;
+
+  let chosenPath = embed.active_path;
+  const isSafari = userAgent && userAgent.includes('Safari') && !userAgent.includes('Chrome');
+
+  if (embed.routing_rule === 'safari_A') {
+    chosenPath = isSafari ? 'A' : 'B';
+  } else if (embed.routing_rule === 'safari_B') {
+    chosenPath = isSafari ? 'B' : 'A';
+  }
+
+  const url = chosenPath === 'B' ? embed.success_url_b : embed.success_url_a;
+
+  if (url && url.trim()) {
+    return url.trim();
   }
 
   return null;
@@ -38,6 +48,7 @@ export default async function handler(req, res) {
 
   if (req.method !== "POST") return res.status(405).end();
   const { token, fingerprint } = req.body;
+  const userAgent = req.headers['user-agent'] || '';
 
   if (!token || !fingerprint) {
     return res.status(400).json({ error: "Token and fingerprint are required" });
@@ -45,7 +56,7 @@ export default async function handler(req, res) {
 
   const { data: session, error: fetchError } = await supabase
     .from("sessions")
-    .select("state, embed_id")
+    .select("state, embed_id, resolved_success_url")
     .eq("token", token)
     .single();
 
@@ -54,34 +65,30 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: "Session not found." });
   }
 
-  // If already verified, it's a success. Just return the redirect URL.
   if (session.state === 'verified') {
-    const successUrl = await getSuccessUrlForEmbed(session.embed_id);
-    return res.status(200).json({ status: "ok", successUrl });
+    return res.status(200).json({ status: "ok", successUrl: session.resolved_success_url });
   }
 
-  // If it's not in a state that can be approved, it's an error.
   if (session.state !== 'scanned') {
     return res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'. It must be 'scanned'.` });
   }
 
-  const { data: updatedSession, error: updateError } = await supabaseAdmin
+  const successUrl = await resolveSuccessUrl(session.embed_id, userAgent);
+
+  const { error: updateError } = await supabaseAdmin
     .from("sessions")
-    .update({ state: "verified", mobile_fingerprint: fingerprint, verified_at: new Date().toISOString() })
-    .eq("token", token)
-    .select('embed_id')
-    .single();
+    .update({ 
+      state: "verified", 
+      mobile_fingerprint: fingerprint, 
+      verified_at: new Date().toISOString(),
+      resolved_success_url: successUrl,
+    })
+    .eq("token", token);
 
   if (updateError) {
     console.error("Supabase update error:", updateError);
     return res.status(500).json({ error: `Failed to approve session: ${updateError.message}` });
   }
 
-  if (!updatedSession) {
-    console.error("Session update failed. No rows were updated, possibly due to RLS policy.");
-    return res.status(500).json({ error: "Failed to approve session. The update was not applied." });
-  }
-
-  const successUrl = await getSuccessUrlForEmbed(updatedSession.embed_id);
   res.status(200).json({ status: "ok", successUrl });
 }
