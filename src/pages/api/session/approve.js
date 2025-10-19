@@ -6,7 +6,7 @@ const resolveSuccessUrl = async (embedId, userAgent) => {
 
   const { data: embed, error } = await supabase
     .from('embeds')
-    .select('success_url_a, success_url_b, active_path, routing_rule')
+    .select('success_url_a, success_url_b, active_path')
     .eq('id', embedId)
     .single();
 
@@ -18,14 +18,7 @@ const resolveSuccessUrl = async (embedId, userAgent) => {
   if (!embed) return null;
 
   let chosenPath = embed.active_path;
-  const isSafari = userAgent && userAgent.includes('Safari') && !userAgent.includes('Chrome');
-
-  if (embed.routing_rule === 'safari_A') {
-    chosenPath = isSafari ? 'A' : 'B';
-  } else if (embed.routing_rule === 'safari_B') {
-    chosenPath = isSafari ? 'B' : 'A';
-  }
-
+  
   const url = chosenPath === 'B' ? embed.success_url_b : embed.success_url_a;
 
   if (url && url.trim()) {

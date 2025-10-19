@@ -28,7 +28,6 @@ export default async function handler(req, res) {
       success_url_a: '',
       success_url_b: '',
       active_path: 'A',
-      routing_rule: 'none',
     })
     .select()
     .single();
