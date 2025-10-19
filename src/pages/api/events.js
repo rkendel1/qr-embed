@@ -52,9 +52,36 @@ export default async function handler(req, res) {
         table: 'sessions',
         filter: `token=eq.${token}`,
       },
-      (payload) => {
+      async (payload) => {
         console.log(`Real-time update for token ${token}: state ${payload.new.state}`);
-        res.write(`data: ${JSON.stringify({ state: payload.new.state })}\n\n`);
+        
+        let eventData = { state: payload.new.state };
+
+        if (payload.new.state === 'verified' && payload.new.embed_id) {
+          try {
+            const { data: embedData, error: embedError } = await supabase
+              .from('embeds')
+              .select('success_url_a, success_url_b, active_path')
+              .eq('id', payload.new.embed_id)
+              .single();
+
+            if (embedError) {
+              console.error(`Error fetching embed for session ${token}:`, embedError);
+            } else if (embedData) {
+              const successUrl = embedData.active_path === 'B' 
+                ? embedData.success_url_b 
+                : embedData.success_url_a;
+              
+              if (successUrl) {
+                eventData.successUrl = successUrl;
+              }
+            }
+          } catch (e) {
+            console.error(`Exception fetching embed for session ${token}:`, e);
+          }
+        }
+        
+        res.write(`data: ${JSON.stringify(eventData)}\n\n`);
         res.flush();
       }
     )

@@ -102,7 +102,7 @@
         
         evtSource.onmessage = (e) => {
           const event = JSON.parse(e.data);
-          console.log('QR Embed: Received state update:', event.state);
+          console.log('QR Embed: Received state update:', event);
 
           switch (event.state) {
             case 'init':
@@ -115,15 +115,25 @@
               statusContainer.style.color = '#d97706'; // Amber 600
               break;
             case 'verified':
-              mainContainer.innerHTML = ''; // Clear old content
-              const successMessage = document.createElement('div');
-              successMessage.style.display = 'flex';
-              successMessage.style.flexDirection = 'column';
-              successMessage.style.alignItems = 'center';
-              successMessage.style.justifyContent = 'center';
-              successMessage.style.height = '170px'; // Match old container height
-              successMessage.innerHTML = '<p style="font-family: sans-serif; color: #16a34a; font-size: 16px; font-weight: bold;">Connected!</p>';
-              mainContainer.appendChild(successMessage);
+              if (event.successUrl) {
+                const target = window.top || window;
+                try {
+                  target.location.href = event.successUrl;
+                } catch (e) {
+                  console.error("QR Embed: Could not redirect top window, redirecting self.", e);
+                  window.location.href = event.successUrl;
+                }
+              } else {
+                mainContainer.innerHTML = ''; // Clear old content
+                const successMessage = document.createElement('div');
+                successMessage.style.display = 'flex';
+                successMessage.style.flexDirection = 'column';
+                successMessage.style.alignItems = 'center';
+                successMessage.style.justifyContent = 'center';
+                successMessage.style.height = '170px'; // Match old container height
+                successMessage.innerHTML = '<p style="font-family: sans-serif; color: #16a34a; font-size: 16px; font-weight: bold;">Connected!</p>';
+                mainContainer.appendChild(successMessage);
+              }
               evtSource.close();
               break;
             default:
