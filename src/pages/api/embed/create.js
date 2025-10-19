@@ -35,7 +35,7 @@ export default async function handler(req, res) {
 
   if (embedError) {
     console.error("Supabase insert error on embed create:", embedError);
-    return res.status(500).json({ error: "Failed to create embed." });
+    return res.status(500).json({ error: `Database error: ${embedError.message}` });
   }
 
   res.status(201).json(embed);
