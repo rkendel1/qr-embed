@@ -44,7 +44,7 @@ export default function QRPage({ token, session, sessionError }) {
       }
 
       if (data.successUrl) {
-        window.location.href = data.successUrl;
+        window.location.replace(data.successUrl);
       } else {
         setApproved(true);
       }

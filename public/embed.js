@@ -118,10 +118,10 @@
               if (event.successUrl) {
                 const target = window.top || window;
                 try {
-                  target.location.href = event.successUrl;
+                  target.location.replace(event.successUrl);
                 } catch (e) {
                   console.error("QR Embed: Could not redirect top window, redirecting self.", e);
-                  window.location.href = event.successUrl;
+                  window.location.replace(event.successUrl);
                 }
               } else {
                 mainContainer.innerHTML = ''; // Clear old content
