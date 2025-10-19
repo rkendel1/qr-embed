@@ -27,7 +27,7 @@ function EditEmbedForm({ embed, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-gray-50 p-4 space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label htmlFor={`success_url_a_${embed.id}`} className="block text-sm font-medium text-gray-700">Success URL (Path A)</label>
@@ -61,11 +61,57 @@ function EditEmbedForm({ embed, onSave, onCancel }) {
           <button type="button" onClick={() => handlePathChange('B')} className={`px-4 py-2 text-sm font-medium rounded-md ${formData.active_path === 'B' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border'}`}>Path B</button>
         </div>
       </div>
-      <div className="flex justify-end space-x-2">
+      <div className="flex justify-end space-x-2 pt-2">
         <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
         <button type="submit" disabled={isSaving} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 disabled:bg-gray-400">{isSaving ? 'Saving...' : 'Save Changes'}</button>
       </div>
     </form>
+  );
+}
+
+const StatusPill = ({ state }) => {
+  const stateStyles = {
+    init: "bg-blue-100 text-blue-800",
+    loaded: "bg-yellow-100 text-yellow-800",
+    scanned: "bg-orange-100 text-orange-800",
+    verified: "bg-green-100 text-green-800",
+    default: "bg-gray-100 text-gray-800",
+  };
+  const style = stateStyles[state] || stateStyles.default;
+  return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${style}`}>{state}</span>;
+};
+
+function SessionList({ sessions }) {
+  if (sessions.length === 0) {
+    return <p className="text-center text-gray-500 py-4">No sessions for this embed yet.</p>;
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {sessions.map((session) => (
+            <tr key={session.token}>
+              <td className="px-4 py-3 whitespace-nowrap"><StatusPill state={session.state} /></td>
+              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{new Date(session.created_at).toLocaleString()}</td>
+              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                <div className="flex flex-col space-y-1">
+                  <p>Token: <code className="text-xs bg-gray-100 p-1 rounded">{session.token.substring(0, 8)}...</code></p>
+                  {session.fingerprint && <p>Device FP: <code className="text-xs bg-gray-100 p-1 rounded">{session.fingerprint.substring(0, 8)}...</code></p>}
+                  {session.mobile_fingerprint && <p>Mobile FP: <code className="text-xs bg-gray-100 p-1 rounded">{session.mobile_fingerprint.substring(0, 8)}...</code></p>}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -77,7 +123,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState({ embeds: true, sessions: true });
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
-  const [editingEmbedId, setEditingEmbedId] = useState(null);
+  const [activeEmbedId, setActiveEmbedId] = useState(null);
+  const [activeTab, setActiveTab] = useState('sessions');
 
   const fetchEmbeds = useCallback(async () => {
     setLoading(prev => ({ ...prev, embeds: true }));
@@ -121,6 +168,15 @@ export default function Dashboard() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchSessions]);
+
+  const sessionsByEmbed = sessions.reduce((acc, session) => {
+    const embedId = session.embeds?.id;
+    if (embedId) {
+      if (!acc[embedId]) acc[embedId] = [];
+      acc[embedId].push(session);
+    }
+    return acc;
+  }, {});
 
   const handleGenerateEmbed = async () => {
     if (!embedName.trim()) return;
@@ -176,16 +232,16 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpdateEmbed = async (formData) => {
+  const handleUpdateEmbed = async (embedId, formData) => {
     setError(null);
     try {
       const res = await fetch('/api/embed/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingEmbedId, ...formData }),
+        body: JSON.stringify({ id: embedId, ...formData }),
       });
       if (!res.ok) throw new Error('Failed to update embed.');
-      setEditingEmbedId(null);
+      setActiveEmbedId(null);
       await fetchEmbeds();
     } catch (error) {
       console.error("Error updating embed:", error);
@@ -193,16 +249,13 @@ export default function Dashboard() {
     }
   };
 
-  const StatusPill = ({ state }) => {
-    const stateStyles = {
-      init: "bg-blue-100 text-blue-800",
-      loaded: "bg-yellow-100 text-yellow-800",
-      scanned: "bg-orange-100 text-orange-800",
-      verified: "bg-green-100 text-green-800",
-      default: "bg-gray-100 text-gray-800",
-    };
-    const style = stateStyles[state] || stateStyles.default;
-    return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${style}`}>{state}</span>;
+  const handleToggleDetails = (embedId) => {
+    if (activeEmbedId === embedId) {
+      setActiveEmbedId(null);
+    } else {
+      setActiveEmbedId(embedId);
+      setActiveTab('sessions');
+    }
   };
 
   return (
@@ -241,7 +294,7 @@ export default function Dashboard() {
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active Path</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sessions</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -252,16 +305,31 @@ export default function Dashboard() {
                             <tr>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{embed.name}</td>
                               <td className="px-6 py-4 whitespace-nowrap"><ToggleSwitch enabled={embed.is_active} onChange={() => handleToggleEmbed(embed.id, embed.is_active)} /></td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{embed.active_path || 'A'}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(sessionsByEmbed[embed.id] || []).length}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(embed.created_at).toLocaleString()}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-4">
-                                <button onClick={() => setEditingEmbedId(editingEmbedId === embed.id ? null : embed.id)} className="text-indigo-600 hover:indigo-900">{editingEmbedId === embed.id ? 'Close' : 'Configure'}</button>
+                                <button onClick={() => handleToggleDetails(embed.id)} className="text-indigo-600 hover:indigo-900">{activeEmbedId === embed.id ? 'Close' : 'Details'}</button>
                                 <a href={`/demo/${embed.template_token}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">Demo</a>
                                 <button onClick={() => handleCopy(getEmbedCode(embed), embed.id)} className="text-indigo-600 hover:underline">{copied === embed.id ? 'Copied!' : 'Code'}</button>
                               </td>
                             </tr>
-                            {editingEmbedId === embed.id && (
-                              <tr><td colSpan="5"><EditEmbedForm embed={embed} onSave={handleUpdateEmbed} onCancel={() => setEditingEmbedId(null)} /></td></tr>
+                            {activeEmbedId === embed.id && (
+                              <tr>
+                                <td colSpan="5" className="p-0">
+                                  <div className="bg-gray-50 p-4">
+                                    <div className="border-b border-gray-200 mb-4">
+                                      <nav className="-mb-px flex space-x-6">
+                                        <button onClick={() => setActiveTab('sessions')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'sessions' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Sessions</button>
+                                        <button onClick={() => setActiveTab('configure')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'configure' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Configuration</button>
+                                      </nav>
+                                    </div>
+                                    <div>
+                                      {activeTab === 'sessions' && <SessionList sessions={sessionsByEmbed[embed.id] || []} />}
+                                      {activeTab === 'configure' && <EditEmbedForm embed={embed} onSave={(formData) => handleUpdateEmbed(embed.id, formData)} onCancel={() => setActiveEmbedId(null)} />}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
                             )}
                           </Fragment>
                         ))}
@@ -269,47 +337,6 @@ export default function Dashboard() {
                     </table>
                   </div>
                 ) : <p className="text-center p-8">No embeds created yet.</p>
-              }
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-medium text-gray-900">Recent Sessions</h2>
-              <button onClick={fetchSessions} disabled={loading.sessions} className="px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">{loading.sessions ? '...' : 'Refresh'}</button>
-            </div>
-            <div className="bg-white shadow overflow-hidden sm:rounded-md">
-              {loading.sessions ? <p className="text-center p-8">Loading sessions...</p> :
-                sessions.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Embed Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {sessions.map((session) => (
-                          <tr key={session.token}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{session.embeds?.name || 'N/A'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap"><StatusPill state={session.state} /></td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(session.created_at).toLocaleString()}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <div className="flex flex-col space-y-1">
-                                <p>Token: <code className="text-xs bg-gray-100 p-1 rounded">{session.token.substring(0, 8)}...</code></p>
-                                {session.fingerprint && <p>Device FP: <code className="text-xs bg-gray-100 p-1 rounded">{session.fingerprint.substring(0, 8)}...</code></p>}
-                                {session.mobile_fingerprint && <p>Mobile FP: <code className="text-xs bg-gray-100 p-1 rounded">{session.mobile_fingerprint.substring(0, 8)}...</code></p>}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : <p className="text-center p-8">No sessions yet.</p>
               }
             </div>
           </div>
