@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid active path.' });
   }
 
-  if (routing_rule && !['none', 'device_parity'].includes(routing_rule)) {
+  if (routing_rule && !['none', 'device_parity', 'split_test'].includes(routing_rule)) {
     return res.status(400).json({ error: 'Invalid routing rule.' });
   }
 

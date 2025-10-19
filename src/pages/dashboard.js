@@ -66,9 +66,12 @@ function EditEmbedForm({ embed, onSave, onCancel }) {
         >
           <option value="none">None (Use Default Path)</option>
           <option value="device_parity">Device Parity</option>
+          <option value="split_test">Split Test (50/50)</option>
         </select>
         <p className="mt-2 text-sm text-gray-500">
-          Device Parity: Routes to Path A if devices are different, Path B if they are the same.
+          Device Parity: Routes based on whether the scanning device is the same as the original device.
+          <br />
+          Split Test: Randomly routes users to Path A or Path B.
         </p>
       </div>
       <div>

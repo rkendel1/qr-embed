@@ -52,8 +52,10 @@ export default async function handler(req, res) {
       const desktopFingerprint = session.fingerprint;
       // Path A for different devices (success), Path B for same device (warning/alternative)
       successUrl = desktopFingerprint !== mobileFingerprint ? embed.success_url_a : embed.success_url_b;
+    } else if (embed.routing_rule === 'split_test') {
+      successUrl = Math.random() < 0.5 ? embed.success_url_a : embed.success_url_b;
     } else {
-      // Fallback to default path logic
+      // Fallback to default path logic for 'none'
       successUrl = embed.active_path === 'B' ? embed.success_url_b : embed.success_url_a;
     }
     
