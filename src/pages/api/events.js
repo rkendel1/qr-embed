@@ -1,6 +1,27 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { supabase } from "@/lib/supabase";
 
+// Helper function to fetch session with retries to handle potential replication lag
+async function findSessionWithRetry(token, retries = 3, delay = 250) {
+  for (let i = 0; i < retries; i++) {
+    const { data, error } = await supabaseAdmin
+      .from("sessions")
+      .select("token, state, success_url")
+      .eq("token", token)
+      .single();
+    
+    if (!error && data) {
+      return { initialSession: data, initialError: null };
+    }
+    
+    if (i < retries - 1) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  console.error(`Could not find session for token ${token} after ${retries} retries.`);
+  return { initialSession: null, initialError: "Session not found after retries" };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).end();
@@ -12,11 +33,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Token is required" });
   }
 
-  const { data: initialSession, error: initialError } = await supabaseAdmin
-    .from("sessions")
-    .select("token, state, success_url")
-    .eq("token", token)
-    .single();
+  const { initialSession, initialError } = await findSessionWithRetry(token);
 
   if (initialError || !initialSession) {
     res.status(404).end();
