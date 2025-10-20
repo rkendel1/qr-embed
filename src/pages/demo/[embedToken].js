@@ -77,11 +77,9 @@ export async function getServerSideProps(context) {
     return { notFound: true };
   }
 
-  const origin = process.env.NEXT_PUBLIC_APP_URL;
-  if (!origin) {
-    console.error("Demo page requires NEXT_PUBLIC_APP_URL to be set.");
-    return { props: { embed: null, origin: null } };
-  }
+  const host = context.req.headers.host || 'localhost:3000';
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+  const origin = `${protocol}://${host}`;
 
   return {
     props: {
