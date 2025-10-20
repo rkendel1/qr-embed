@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { id, success_url_a, success_url_b, active_path, routing_rule } = req.body;
+  const { id, success_url_a, success_url_b, active_path, routing_rule, jwt_secret } = req.body;
 
   if (!id) {
     return res.status(400).json({ error: 'Embed ID is required.' });
@@ -20,11 +20,15 @@ export default async function handler(req, res) {
   }
 
   const updateData = {
-    success_url_a: success_url_a ? success_url_a.trim() : '',
-    success_url_b: success_url_b ? success_url_b.trim() : '',
+    success_url_a: success_url_a !== undefined ? success_url_a.trim() : undefined,
+    success_url_b: success_url_b !== undefined ? success_url_b.trim() : undefined,
     active_path,
     routing_rule,
+    jwt_secret,
   };
+  
+  // Remove undefined keys so we only update provided fields
+  Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
 
   const { data, error } = await supabaseAdmin
     .from('embeds')

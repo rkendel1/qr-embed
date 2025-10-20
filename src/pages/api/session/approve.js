@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 
   const { data: embed, error: embedError } = await supabaseAdmin
     .from("embeds")
-    .select("success_url_a, success_url_b, active_path, routing_rule")
+    .select("success_url_a, success_url_b, active_path, routing_rule, jwt_secret")
     .eq("id", session.embed_id)
     .single();
 
@@ -57,23 +57,19 @@ export default async function handler(req, res) {
     }
   }
 
-  // Generate JWT if an external_user_id exists
-  if (session.external_user_id && finalSuccessUrl) {
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error("CRITICAL: JWT_SECRET environment variable is not set.");
-      res.status(500).json({ error: "Server configuration error." });
-      return;
-    }
+  // Generate JWT if an external_user_id exists and a secret is configured
+  if (session.external_user_id && finalSuccessUrl && embed?.jwt_secret) {
     const authToken = jwt.sign(
       { userId: session.external_user_id },
-      jwtSecret,
+      embed.jwt_secret,
       { expiresIn: '5m' } // Token is valid for 5 minutes
     );
     
     const url = new URL(finalSuccessUrl);
     url.searchParams.set('token', authToken);
     finalSuccessUrl = url.toString();
+  } else if (session.external_user_id && finalSuccessUrl) {
+    console.warn(`JWT SSO was requested for embed ${embed.id} but no JWT Secret is configured.`);
   }
 
   const { error: updateError } = await supabaseAdmin

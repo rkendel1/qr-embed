@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { randomBytes } from 'crypto';
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -12,6 +13,7 @@ export default async function handler(req, res) {
   }
 
   const token = uuidv4();
+  const jwtSecret = randomBytes(32).toString('hex');
 
   const { data: embed, error: embedError } = await supabaseAdmin
     .from('embeds')
@@ -23,6 +25,7 @@ export default async function handler(req, res) {
       success_url_b: '',
       active_path: 'A',
       routing_rule: 'none',
+      jwt_secret: jwtSecret,
     })
     .select()
     .single();

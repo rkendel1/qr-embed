@@ -8,8 +8,11 @@ function EditEmbedForm({ embed, onSave, onCancel }) {
     success_url_b: embed.success_url_b || '',
     active_path: embed.active_path || 'A',
     routing_rule: embed.routing_rule || 'none',
+    jwt_secret: embed.jwt_secret || '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,8 +30,47 @@ function EditEmbedForm({ embed, onSave, onCancel }) {
     setIsSaving(false);
   };
 
+  const generateSecret = () => {
+    const array = new Uint8Array(32);
+    window.crypto.getRandomValues(array);
+    const secret = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    setFormData(prev => ({ ...prev, jwt_secret: secret }));
+  };
+
+  const copySecret = () => {
+    navigator.clipboard.writeText(formData.jwt_secret);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <label htmlFor={`jwt_secret_${embed.id}`} className="block text-sm font-medium text-gray-700">JWT Secret for SSO</label>
+        <div className="mt-1 flex rounded-md shadow-sm">
+          <input
+            type={showSecret ? 'text' : 'password'}
+            id={`jwt_secret_${embed.id}`}
+            name="jwt_secret"
+            value={formData.jwt_secret}
+            onChange={handleChange}
+            className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-l-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono"
+            placeholder="A secure, random string"
+          />
+          <button type="button" onClick={() => setShowSecret(!showSecret)} className="relative -ml-px inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium bg-gray-50 text-gray-700 hover:bg-gray-100">
+            {showSecret ? 'Hide' : 'Show'}
+          </button>
+          <button type="button" onClick={copySecret} className="relative -ml-px inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium bg-gray-50 text-gray-700 hover:bg-gray-100">
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+          <button type="button" onClick={generateSecret} className="relative -ml-px inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-r-md bg-gray-50 text-gray-700 hover:bg-gray-100">
+            Generate
+          </button>
+        </div>
+        <p className="mt-2 text-sm text-gray-500">
+          This secret is used to sign authentication tokens (JWTs). Provide this to the destination site to verify users.
+        </p>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label htmlFor={`success_url_a_${embed.id}`} className="block text-sm font-medium text-gray-700">Success URL (Path A)</label>
@@ -290,7 +332,7 @@ export default function Dashboard() {
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
             <span className="block sm:inline ml-2">{error}</span>
             <button onClick={() => setError(null)} className="absolute top-0 bottom-0 right-0 px-4 py-3">
-              <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 D 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+              <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
             </button>
           </div>
         )}
