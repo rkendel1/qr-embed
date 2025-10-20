@@ -48,7 +48,7 @@ export default async function handler(req, res) {
 
   console.log(`SSE connection established for token: ${token}`);
 
-  res.write(`data: ${JSON.stringify({ state: initialSession.state })}\n\n`);
+  res.write(`data: ${JSON.stringify({ state: initialSession.state, successUrl: initialSession.success_url })}\n\n`);
   res.flush();
 
   const heartbeatInterval = setInterval(() => {
@@ -66,14 +66,26 @@ export default async function handler(req, res) {
         table: 'sessions',
         filter: `token=eq.${token}`,
       },
-      (payload) => {
-        console.log(`Real-time update for token ${token}: state ${payload.new.state}`);
+      async (payload) => {
+        console.log(`Real-time update received for token ${token}. Refetching data.`);
         
+        const { data: updatedSession, error } = await supabaseAdmin
+          .from('sessions')
+          .select('state, success_url')
+          .eq('token', token)
+          .single();
+
+        if (error || !updatedSession) {
+          console.error(`SSE: Failed to refetch session ${token} after update notification.`, error);
+          return;
+        }
+
         const eventData = { 
-          state: payload.new.state,
-          successUrl: payload.new.success_url 
+          state: updatedSession.state,
+          successUrl: updatedSession.success_url 
         };
         
+        console.log(`SSE: Sending event for token ${token}:`, eventData);
         res.write(`data: ${JSON.stringify(eventData)}\n\n`);
         res.flush();
       }
