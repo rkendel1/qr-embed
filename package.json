@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.75.1",
+    "cookie": "^1.0.2",
     "fingerprintjs2": "^2.1.4",
     "jsonwebtoken": "^9.0.2",
     "next": "15.5.6",

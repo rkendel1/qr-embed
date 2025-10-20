@@ -23,8 +23,8 @@ export default function SsoDemoPage() {
           </div>
 
           <div className="text-center mt-6">
-            <a href="/dashboard" className="text-indigo-600 hover:underline">
-              Go to Dashboard
+            <a href="/sso-dashboard-demo" className="text-indigo-600 hover:underline">
+              Go to Protected Page
             </a>
           </div>
         </div>
@@ -37,7 +37,7 @@ export default function SsoDemoPage() {
       <Script
         src="/sso-connector.js"
         data-verify-url="/api/sso-verify-demo"
-        data-success-redirect="/dashboard"
+        data-success-redirect="/sso-dashboard-demo"
         data-target-div="sso-status"
         defer
       />
