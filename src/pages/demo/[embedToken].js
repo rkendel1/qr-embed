@@ -11,6 +11,12 @@ export default function DemoPage({ embed, origin }) {
     );
   }
 
+  // In a real application, this user object would come from your authentication system.
+  const loggedInUser = {
+    id: 'user-987-live',
+    name: 'Jane Doe',
+  };
+
   const embedScriptSrc = `${origin}/embed.js`;
   const targetId = `qr-embed-container-${embed.template_token}`;
 
@@ -21,8 +27,11 @@ export default function DemoPage({ embed, origin }) {
       </Head>
       <div className="bg-gray-100 min-h-screen">
         <header className="bg-white shadow-sm">
-          <div className="max-w-4xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <h1 className="text-xl font-semibold text-gray-800">Simulated Product Page</h1>
+            <div className="text-sm text-gray-600">
+              Logged in as: <span className="font-medium text-gray-900">{loggedInUser.name}</span>
+            </div>
           </div>
         </header>
         <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -39,6 +48,7 @@ export default function DemoPage({ embed, origin }) {
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Connect Your Device</h3>
                 <p className="text-gray-600 mb-4">
                   Scan the QR code below with your mobile device to securely connect and continue.
+                  We are passing the User ID <code className="bg-gray-200 text-sm p-1 rounded">{loggedInUser.id}</code> to the script.
                 </p>
                 <div 
                   id={targetId}
@@ -52,7 +62,7 @@ export default function DemoPage({ embed, origin }) {
                   defer
                   data-token={embed.template_token}
                   data-host={origin}
-                  data-user-id="user-123-demoflow"
+                  data-user-id={loggedInUser.id}
                   data-target-id={targetId}
                 />
               </div>
