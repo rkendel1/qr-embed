@@ -16,7 +16,7 @@ export default function DemoPage({ embed, origin }) {
   return (
     <>
       <Head>
-        <title>Demo: {embed.name}</title>
+        <title>{`Demo: ${embed.name}`}</title>
       </Head>
       <div className="bg-gray-100 min-h-screen">
         <header className="bg-white shadow-sm">
