@@ -67,36 +67,20 @@ export default async function handler(req, res) {
         filter: `token=eq.${token}`,
       },
       async (payload) => {
-        console.log(`Real-time update received for token ${token}. Refetching to confirm state.`);
+        console.log(`Real-time update received for token ${token}. Refetching data after a short delay.`);
         
-        let updatedSession, error;
+        // Wait a moment to allow for database replication lag.
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Attempt to fetch the final 'verified' state, retrying to handle replication lag
-        for (let i = 0; i < 4; i++) {
-          ({ data: updatedSession, error } = await supabaseAdmin
-            .from('sessions')
-            .select('state, success_url')
-            .eq('token', token)
-            .single());
+        const { data: updatedSession, error } = await supabaseAdmin
+          .from('sessions')
+          .select('state, success_url')
+          .eq('token', token)
+          .single();
 
-          if (error) {
-            console.error(`SSE: Failed to refetch session ${token} after update notification.`, error);
-            return; // Exit on database error
-          }
-
-          if (updatedSession && updatedSession.state === 'verified') {
-            break; // Found the final state, exit loop
-          }
-          
-          // If not verified yet, wait and retry
-          if (i < 3) {
-            await new Promise(resolve => setTimeout(resolve, 250));
-          }
-        }
-
-        if (!updatedSession) {
-            console.error(`SSE: Session ${token} could not be refetched after update notification.`);
-            return;
+        if (error || !updatedSession) {
+          console.error(`SSE: Failed to refetch session ${token} after update notification.`, error);
+          return;
         }
 
         const eventData = { 
