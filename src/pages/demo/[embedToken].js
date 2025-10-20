@@ -79,7 +79,9 @@ export async function getServerSideProps(context) {
 
   const host = context.req.headers.host || 'localhost:3000';
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-  const origin = `${protocol}://${host}`;
+  const defaultOrigin = `${protocol}://${host}`;
+
+  const origin = process.env.NEXT_PUBLIC_APP_URL || defaultOrigin;
 
   return {
     props: {

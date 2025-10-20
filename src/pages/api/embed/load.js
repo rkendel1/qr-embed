@@ -48,7 +48,7 @@ export default async function handler(req, res) {
   
   // Prefer the origin sent from the client script, as it's more reliable
   // than server headers which can be ambiguous in some environments.
-  const origin = clientOrigin || (() => {
+  const origin = clientOrigin || process.env.NEXT_PUBLIC_APP_URL || (() => {
     const host = req.headers.host;
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
     return `${protocol}://${host}`;
