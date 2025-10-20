@@ -78,7 +78,7 @@
           const res = await fetch(`${apiHost}/api/embed/load`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ templateToken, fingerprint, userId }), // Send the user ID
+            body: JSON.stringify({ templateToken, fingerprint, userId, origin: apiHost }),
           });
 
           if (!res.ok) {

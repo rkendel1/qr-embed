@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { templateToken, fingerprint, userId } = req.body;
+  const { templateToken, fingerprint, userId, origin: clientOrigin } = req.body;
 
   if (!templateToken || !fingerprint) {
     res.status(400).json({ error: "Embed token and fingerprint are required" });
@@ -46,9 +46,13 @@ export default async function handler(req, res) {
   // 2. Always create a new session using the admin client to ensure consistency.
   const sessionToken = uuidv4();
   
-  const host = req.headers.host;
-  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-  const origin = `${protocol}://${host}`;
+  // Prefer the origin sent from the client script, as it's more reliable
+  // than server headers which can be ambiguous in some environments.
+  const origin = clientOrigin || (() => {
+    const host = req.headers.host;
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    return `${protocol}://${host}`;
+  })();
 
   if (!origin) {
     const errorMessage = "Server configuration error: Could not determine origin URL.";
