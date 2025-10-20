@@ -1,42 +1,25 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { supabase } from "@/lib/supabase";
 
-// Helper function to fetch session with retries to handle potential replication lag
-async function findSessionWithRetry(token, retries = 3, delay = 250) {
-  for (let i = 0; i < retries; i++) {
-    const { data, error } = await supabaseAdmin
-      .from("sessions")
-      .select("token, state, success_url")
-      .eq("token", token)
-      .single();
-    
-    if (!error && data) {
-      return { initialSession: data, initialError: null };
-    }
-    
-    if (i < retries - 1) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  console.error(`Could not find session for token ${token} after ${retries} retries.`);
-  return { initialSession: null, initialError: "Session not found after retries" };
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).end();
   }
 
   const { token } = req.query;
-
   if (!token) {
     return res.status(400).json({ error: "Token is required" });
   }
 
-  const { initialSession, initialError } = await findSessionWithRetry(token);
+  // Fetch the initial state of the session in case it's already verified
+  const { data: initialSession, error: initialError } = await supabaseAdmin
+    .from("sessions")
+    .select("token, state, success_url")
+    .eq("token", token)
+    .single();
 
   if (initialError || !initialSession) {
-    res.status(404).end();
+    res.status(404).json({ error: "Session not found" });
     return;
   }
 
@@ -48,8 +31,15 @@ export default async function handler(req, res) {
 
   console.log(`SSE connection established for token: ${token}`);
 
+  // Send the current state immediately on connection
   res.write(`data: ${JSON.stringify({ state: initialSession.state, successUrl: initialSession.success_url })}\n\n`);
   res.flush();
+
+  // If the session is already verified, we don't need to listen for updates.
+  if (initialSession.state === 'verified') {
+    res.end();
+    return;
+  }
 
   const heartbeatInterval = setInterval(() => {
     res.write(':heartbeat\n\n');
@@ -59,37 +49,11 @@ export default async function handler(req, res) {
   const channel = supabase
     .channel(`session-updates-${token}`)
     .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'sessions',
-        filter: `token=eq.${token}`,
-      },
-      async (payload) => {
-        console.log(`Real-time update received for token ${token}. Refetching data after a short delay.`);
-        
-        // Wait a moment to allow for database replication lag.
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const { data: updatedSession, error } = await supabaseAdmin
-          .from('sessions')
-          .select('state, success_url')
-          .eq('token', token)
-          .single();
-
-        if (error || !updatedSession) {
-          console.error(`SSE: Failed to refetch session ${token} after update notification.`, error);
-          return;
-        }
-
-        const eventData = { 
-          state: updatedSession.state,
-          successUrl: updatedSession.success_url 
-        };
-        
-        console.log(`SSE: Sending event for token ${token}:`, eventData);
-        res.write(`data: ${JSON.stringify(eventData)}\n\n`);
+      'broadcast',
+      { event: 'VERIFICATION_SUCCESS' },
+      (message) => {
+        console.log(`SSE: Broadcast message received for token ${token}:`, message.payload);
+        res.write(`data: ${JSON.stringify(message.payload)}\n\n`);
         res.flush();
       }
     )

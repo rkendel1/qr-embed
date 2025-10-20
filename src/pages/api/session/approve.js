@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     res.status(405).end();
     return;
   }
-  const { token, fingerprint: mobileFingerprint } = req.body;
+  const { token, fingerprint: mobileFingerprint } B= req.body;
 
   if (!token || !mobileFingerprint) {
     res.status(400).json({ error: "Token and fingerprint are required" });
@@ -34,15 +34,11 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Handle cases where the session is already verified
   if (session.state === 'verified') {
-    // Can't determine the original success URL, so we don't redirect.
-    // The mobile page will show "Approved!".
     res.status(200).json({ status: "ok", successUrl: null });
     return;
   }
 
-  // Ensure the session is in the correct state to be approved
   if (session.state !== 'scanned') {
     res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'. It must be 'scanned'.` });
     return;
@@ -59,7 +55,7 @@ export default async function handler(req, res) {
     console.warn(`Could not find embed data (id: ${session.embed_id}) for session ${token}`);
   }
 
-  // Step 3: Determine the correct success URL based on routing rules
+  // Step 3: Determine the correct success URL
   let successUrl = null;
   if (embed) {
     if (embed.routing_rule === 'device_parity') {
@@ -68,7 +64,7 @@ export default async function handler(req, res) {
     } else if (embed.routing_rule === 'split_test') {
       successUrl = Math.random() < 0.5 ? embed.success_url_a : embed.success_url_b;
     } else { // 'none' or default
-      successUrl = embed.active_path === 'B' ? embed.success_url_b : embed.success_url_a;
+      successUrl = embed.active_path === 'B' ? embed.success_url_b : embed.active_path === 'A' ? embed.success_url_a : null;
     }
     
     if (successUrl && successUrl.trim()) {
@@ -78,7 +74,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // Step 4: Update the session to 'verified' and store the success URL
+  // Step 4: Update the session to 'verified'
   const { error: updateError } = await supabaseAdmin
     .from("sessions")
     .update({ 
@@ -94,6 +90,15 @@ export default async function handler(req, res) {
     res.status(500).json({ error: `Failed to approve session: ${updateError.message}` });
     return;
   }
+
+  // Step 5: Broadcast the success message to the listening client
+  const channel = supabaseAdmin.channel(`session-updates-${token}`);
+  await channel.send({
+    type: 'broadcast',
+    event: 'VERIFICATION_SUCCESS',
+    payload: { state: 'verified', successUrl },
+  });
+  supabaseAdmin.removeChannel(channel);
 
   res.status(200).json({ status: "ok", successUrl });
 }
