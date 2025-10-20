@@ -12,6 +12,7 @@ export default function DemoPage({ embed, origin }) {
   }
 
   const embedScriptSrc = `${origin}/embed.js`;
+  const targetId = `qr-embed-container-${embed.template_token}`;
 
   return (
     <>
@@ -39,17 +40,21 @@ export default function DemoPage({ embed, origin }) {
                 <p className="text-gray-600 mb-4">
                   Scan the QR code below with your mobile device to securely connect and continue.
                 </p>
-                <div className="flex justify-center items-center bg-gray-50 p-8 rounded-lg min-h-[200px]">
-                  {/* The embed script will now create and insert the QR code here */}
-                  <Script
-                    id="qr-embed-script"
-                    src={embedScriptSrc}
-                    defer
-                    data-token={embed.template_token}
-                    data-host={origin}
-                    data-user-id="user-123-demoflow"
-                  />
+                <div 
+                  id={targetId}
+                  className="flex justify-center items-center bg-gray-50 p-8 rounded-lg min-h-[200px]"
+                >
+                  {/* The embed script will target this div */}
                 </div>
+                <Script
+                  id="qr-embed-script"
+                  src={embedScriptSrc}
+                  defer
+                  data-token={embed.template_token}
+                  data-host={origin}
+                  data-user-id="user-123-demoflow"
+                  data-target-id={targetId}
+                />
               </div>
             </div>
           </div>

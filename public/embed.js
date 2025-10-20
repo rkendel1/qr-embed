@@ -26,7 +26,17 @@
 
   mainContainer.appendChild(qrContainer);
   mainContainer.appendChild(statusContainer);
-  script.parentNode.insertBefore(mainContainer, script);
+
+  const targetId = script.dataset.targetId;
+  const targetElement = targetId ? document.getElementById(targetId) : null;
+
+  if (targetElement) {
+    targetElement.innerHTML = ''; // Clear placeholder content
+    targetElement.appendChild(mainContainer);
+  } else {
+    // Fallback to original behavior for consumers who don't use a targetId
+    script.parentNode.insertBefore(mainContainer, script);
+  }
 
   const templateToken = script.dataset.token;
   const apiHost = script.dataset.host;
