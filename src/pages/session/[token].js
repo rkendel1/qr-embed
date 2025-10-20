@@ -54,7 +54,7 @@ export default function QRPage({ token, session, sessionError }) {
   return (
     <>
       <Script 
-        src="https://openfpcdn.io/fingerprintjs/v4" 
+        src="https://openfpcdn.io/fingerprintjs/v4/umd.min.js" 
         onLoad={handleFingerprintLoad}
       />
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
