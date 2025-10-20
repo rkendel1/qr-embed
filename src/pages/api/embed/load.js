@@ -8,17 +8,20 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(204).end();
+    res.status(204).end();
+    return;
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
+    res.status(405).json({ error: "Method Not Allowed" });
+    return;
   }
 
   const { templateToken, fingerprint } = req.body;
 
   if (!templateToken || !fingerprint) {
-    return res.status(400).json({ error: "Embed token and fingerprint are required" });
+    res.status(400).json({ error: "Embed token and fingerprint are required" });
+    return;
   }
 
   // 1. Verify the embed exists and is active using the admin client
@@ -30,11 +33,13 @@ export default async function handler(req, res) {
 
   if (embedError || !embed) {
     console.error("Embed lookup failed:", embedError);
-    return res.status(404).json({ error: "Embed configuration not found." });
+    res.status(404).json({ error: "Embed configuration not found." });
+    return;
   }
 
   if (!embed.is_active) {
-    return res.status(403).json({ error: "This embed is currently inactive." });
+    res.status(403).json({ error: "This embed is currently inactive." });
+    return;
   }
 
   // 2. Always create a new session using the admin client to ensure consistency.
@@ -44,7 +49,8 @@ export default async function handler(req, res) {
   if (!origin) {
     const errorMessage = "Server configuration error: NEXT_PUBLIC_APP_URL is not set. This is required for QR code generation.";
     console.error(errorMessage);
-    return res.status(500).json({ error: errorMessage });
+    res.status(500).json({ error: errorMessage });
+    return;
   }
   
   const qrUrl = `${origin}/session/${sessionToken}`;
@@ -64,7 +70,8 @@ export default async function handler(req, res) {
 
   if (insertError || !newSession) {
     console.error("Supabase insert error on load:", insertError);
-    return res.status(500).json({ error: "Failed to create session." });
+    res.status(500).json({ error: "Failed to create session." });
+    return;
   }
 
   const qrDataUrl = await QRCode.toDataURL(qrUrl);

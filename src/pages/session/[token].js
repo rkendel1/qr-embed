@@ -9,18 +9,37 @@ export default function QRPage({ token, session, sessionError }) {
   useEffect(() => {
     if (sessionError) return;
 
-    async function generateFingerprint() {
-      try {
-        const FingerprintJS = await import(/* webpackIgnore: true */ 'https://openfpcdn.io/fingerprintjs/v4');
-        const fp = await FingerprintJS.load();
-        const result = await fp.get();
-        setFingerprint(result.visitorId);
-      } catch (err) {
-        console.error("Fingerprint generation failed:", err);
-        setError("Could not initialize session. Please try again.");
+    // Use a more robust script loading method to avoid bundler issues
+    const script = document.createElement('script');
+    script.src = 'https://openfpcdn.io/fingerprintjs/v4';
+    script.async = true;
+    
+    script.onload = () => {
+      // FingerprintJS is loaded, now use it
+      window.FingerprintJS.load()
+        .then(fp => fp.get())
+        .then(result => {
+          setFingerprint(result.visitorId);
+        })
+        .catch(err => {
+          console.error("Fingerprint generation failed:", err);
+          setError("Could not initialize session. Please try again.");
+        });
+    };
+
+    script.onerror = () => {
+      console.error("Failed to load the fingerprinting script.");
+      setError("Could not initialize session. Please try again.");
+    };
+
+    document.head.appendChild(script);
+
+    // Cleanup function to remove the script if the component unmounts
+    return () => {
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
       }
-    }
-    generateFingerprint();
+    };
   }, [sessionError]);
 
   const handleApprove = async () => {

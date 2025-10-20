@@ -6,14 +6,19 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(204).end();
+    res.status(204).end();
+    return;
   }
 
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== "POST") {
+    res.status(405).end();
+    return;
+  }
   const { token, fingerprint: mobileFingerprint } = req.body;
 
   if (!token || !mobileFingerprint) {
-    return res.status(400).json({ error: "Token and fingerprint are required" });
+    res.status(400).json({ error: "Token and fingerprint are required" });
+    return;
   }
 
   // Step 1: Fetch the session by token
@@ -25,17 +30,20 @@ export default async function handler(req, res) {
 
   if (fetchError || !session) {
     console.error("Supabase fetch error on approve:", fetchError);
-    return res.status(404).json({ error: "Session not found." });
+    res.status(404).json({ error: "Session not found." });
+    return;
   }
 
   // Handle cases where the session is already verified
   if (session.state === 'verified') {
-    return res.status(200).json({ status: "ok", successUrl: session.resolved_success_url });
+    res.status(200).json({ status: "ok", successUrl: session.resolved_success_url });
+    return;
   }
 
   // Ensure the session is in the correct state to be approved
   if (session.state !== 'scanned') {
-    return res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'. It must be 'scanned'.` });
+    res.status(409).json({ error: `Cannot approve session because its state is '${session.state}'. It must be 'scanned'.` });
+    return;
   }
 
   // Step 2: Fetch the associated embed configuration
@@ -84,7 +92,8 @@ export default async function handler(req, res) {
 
   if (updateError) {
     console.error("Supabase update error:", updateError);
-    return res.status(500).json({ error: `Failed to approve session: ${updateError.message}` });
+    res.status(500).json({ error: `Failed to approve session: ${updateError.message}` });
+    return;
   }
 
   res.status(200).json({ status: "ok", successUrl });
