@@ -36,7 +36,6 @@ export default function SsoDemoPage() {
       */}
       <Script
         src="/sso-connector.js"
-        data-verify-url="/api/sso-verify-demo"
         data-success-redirect="/sso-dashboard-demo"
         data-target-div="sso-status"
         defer
