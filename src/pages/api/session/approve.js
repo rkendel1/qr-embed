@@ -1,6 +1,38 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import jwt from 'jsonwebtoken';
 
+/**
+ * During development, if a success URL points to localhost, this function
+ * replaces its origin with the one from the NEXT_PUBLIC_APP_URL env variable.
+ * This ensures that redirects work correctly across a local network.
+ * @param {string | null} url - The URL to potentially modify.
+ * @param {string | undefined} appUrl - The base URL from environment variables.
+ * @returns {string | null} - The modified or original URL.
+ */
+const replaceLocalhostUrl = (url, appUrl) => {
+  if (!url || !appUrl || process.env.NODE_ENV !== 'development') {
+    return url;
+  }
+
+  try {
+    const targetUrl = new URL(url);
+    const publicUrl = new URL(appUrl);
+
+    if (targetUrl.hostname === 'localhost' || targetUrl.hostname === '127.0.0.1') {
+      targetUrl.protocol = publicUrl.protocol;
+      targetUrl.hostname = publicUrl.hostname;
+      targetUrl.port = publicUrl.port;
+      return targetUrl.toString();
+    }
+  } catch (e) {
+    // Ignore invalid URLs and return the original
+    console.warn(`[approve] Could not parse URL for replacement: ${url}`);
+    return url;
+  }
+
+  return url;
+};
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -58,6 +90,9 @@ export default async function handler(req, res) {
   if (baseUrl && baseUrl.trim()) {
     finalSuccessUrl = baseUrl.trim();
   }
+
+  // Replace localhost URLs during development for easier testing
+  finalSuccessUrl = replaceLocalhostUrl(finalSuccessUrl, process.env.NEXT_PUBLIC_APP_URL);
 
   // Generate JWT if an external_user_id exists and a secret is configured
   if (session.external_user_id && finalSuccessUrl && embed.jwt_secret) {
