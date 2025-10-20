@@ -21,8 +21,15 @@
  */
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
+    console.log("SSO Connector: DOMContentLoaded event fired.");
     const script = document.currentScript || document.querySelector('script[src*="sso-connector.js"]');
     
+    if (!script) {
+      console.error("SSO Connector: Could not find the script tag. Aborting.");
+      return;
+    }
+    console.log("SSO Connector: Script tag found.", script.dataset);
+
     const verifyUrl = script.dataset.verifyUrl;
     const successRedirect = script.dataset.successRedirect;
     const targetDivId = script.dataset.targetDiv;
@@ -36,34 +43,36 @@
       }
       return;
     }
+    console.log("SSO Connector: Configuration is valid.");
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
 
     if (!token) {
-      // No token found, so we do nothing. The page can render as normal.
+      console.log("SSO Connector: No token found in URL. Script will do nothing.");
       statusContainer.style.display = 'none';
       return;
     }
 
-    // Token found, so we initiate the verification process.
+    console.log("SSO Connector: Token found:", token);
     statusContainer.innerHTML = '<p>Authenticating, please wait...</p>';
     
+    console.log(`SSO Connector: Fetching verification URL: ${verifyUrl}`);
     fetch(`${verifyUrl}?token=${encodeURIComponent(token)}`)
       .then(response => {
+        console.log("SSO Connector: Received response from verification URL.", response);
         if (response.ok) {
-          // The server-side verification was successful.
-          // The server should have set a session cookie. Now we redirect.
+          console.log("SSO Connector: Verification successful. Redirecting to:", successRedirect);
           window.location.href = successRedirect;
         } else {
-          // The server rejected the token.
+          console.error("SSO Connector: Verification failed.");
           return response.text().then(text => {
             throw new Error(text || 'Authentication failed.');
           });
         }
       })
       .catch(error => {
-        console.error('SSO Error:', error);
+        console.error('SSO Connector: Fetch error:', error);
         statusContainer.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
       });
   });
