@@ -19,6 +19,7 @@ const createSessionForUser = async (res, user) => {
     secure: process.env.NODE_ENV !== 'development',
     path: '/',
     maxAge: 60 * 15, // 15 minutes
+    sameSite: 'lax', // Explicitly set SameSite policy for better browser compatibility
   });
   res.setHeader('Set-Cookie', cookie);
 };
