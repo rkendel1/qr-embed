@@ -1,5 +1,4 @@
-import { useState } from "react";
-import Script from 'next/script';
+import { useState, useEffect } from "react";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export default function QRPage({ token, session, sessionError }) {
@@ -7,18 +6,22 @@ export default function QRPage({ token, session, sessionError }) {
   const [fingerprint, setFingerprint] = useState(null);
   const [error, setError] = useState(sessionError);
 
-  const handleFingerprintLoad = async () => {
+  useEffect(() => {
     if (sessionError) return;
-    try {
-      // FingerprintJS is now available on the window object
-      const fp = await window.FingerprintJS.load();
-      const result = await fp.get();
-      setFingerprint(result.visitorId);
-    } catch (err) {
-      console.error("Fingerprint generation failed:", err);
-      setError("Could not initialize session. Please try again.");
+
+    async function generateFingerprint() {
+      try {
+        const FingerprintJS = await import(/* webpackIgnore: true */ 'https://openfpcdn.io/fingerprintjs/v4');
+        const fp = await FingerprintJS.load();
+        const result = await fp.get();
+        setFingerprint(result.visitorId);
+      } catch (err) {
+        console.error("Fingerprint generation failed:", err);
+        setError("Could not initialize session. Please try again.");
+      }
     }
-  };
+    generateFingerprint();
+  }, [sessionError]);
 
   const handleApprove = async () => {
     if (!fingerprint) {
@@ -52,30 +55,24 @@ export default function QRPage({ token, session, sessionError }) {
   };
 
   return (
-    <>
-      <Script 
-        src="https://openfpcdn.io/fingerprintjs/v4/umd.min.js" 
-        onLoad={handleFingerprintLoad}
-      />
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="p-8 bg-white rounded-lg shadow-md text-center max-w-sm w-full">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Approve Connection?</h2>
-          {error ? (
-            <p className="text-red-600 bg-red-50 p-3 rounded-md">{error}</p>
-          ) : approved ? (
-            <p className="text-green-600">Approved! You can close this window.</p>
-          ) : (
-            <button
-              onClick={handleApprove}
-              disabled={!fingerprint}
-              className="w-full px-4 py-2 text-lg font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              {fingerprint ? 'Approve' : 'Initializing...'}
-            </button>
-          )}
-        </div>
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="p-8 bg-white rounded-lg shadow-md text-center max-w-sm w-full">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Approve Connection?</h2>
+        {error ? (
+          <p className="text-red-600 bg-red-50 p-3 rounded-md">{error}</p>
+        ) : approved ? (
+          <p className="text-green-600">Approved! You can close this window.</p>
+        ) : (
+          <button
+            onClick={handleApprove}
+            disabled={!fingerprint}
+            className="w-full px-4 py-2 text-lg font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            {fingerprint ? 'Approve' : 'Initializing...'}
+          </button>
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
