@@ -94,14 +94,11 @@ export default async function handler(req, res) {
   // Step 5: Respond to the mobile client immediately.
   res.status(200).json({ status: "ok", successUrl });
 
-  // Step 6: Broadcast the success message in the background (fire and forget).
-  // This prevents the mobile client from timing out while waiting for the broadcast.
+  // Step 6: Broadcast the success message and exit. Do not await or chain promises.
   const channel = supabaseAdmin.channel(`session-updates-${token}`);
   channel.send({
     type: 'broadcast',
     event: 'VERIFICATION_SUCCESS',
     payload: { state: 'verified', successUrl },
-  }).then(() => {
-    supabaseAdmin.removeChannel(channel);
   });
 }
