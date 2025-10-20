@@ -1,8 +1,9 @@
-const QRCode = require("qrcode");
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { v4 as uuidv4 } from "uuid";
 
 export default async function handler(req, res) {
+  console.log('API /embed/load route hit with method:', req.method);
+
   // Explicitly handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -74,6 +75,7 @@ export default async function handler(req, res) {
     return;
   }
 
+  const { default: QRCode } = await import("qrcode");
   const qrDataUrl = await QRCode.toDataURL(qrUrl);
   res.status(200).json({ qrDataUrl, sessionToken: newSession.token });
 }

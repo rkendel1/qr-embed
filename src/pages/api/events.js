@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
   const { data: initialSession, error: initialError } = await supabaseAdmin
     .from("sessions")
-    .select("token, state")
+    .select("token, state, success_url")
     .eq("token", token)
     .single();
 
@@ -52,7 +52,10 @@ export default async function handler(req, res) {
       (payload) => {
         console.log(`Real-time update for token ${token}: state ${payload.new.state}`);
         
-        const eventData = { state: payload.new.state };
+        const eventData = { 
+          state: payload.new.state,
+          successUrl: payload.new.success_url 
+        };
         
         res.write(`data: ${JSON.stringify(eventData)}\n\n`);
         res.flush();

@@ -78,13 +78,14 @@ export default async function handler(req, res) {
     }
   }
 
-  // Step 4: Update the session to 'verified'
+  // Step 4: Update the session to 'verified' and store the success URL
   const { error: updateError } = await supabaseAdmin
     .from("sessions")
     .update({ 
       state: "verified", 
       mobile_fingerprint: mobileFingerprint, 
       verified_at: new Date().toISOString(),
+      success_url: successUrl,
     })
     .eq("token", token);
 
