@@ -9,19 +9,44 @@ export default function QRPage({ token, session, sessionError }) {
   useEffect(() => {
     if (sessionError) return;
 
-    // Use dynamic import for the ES Module version of FingerprintJS
-    // This is more reliable than script tag injection.
-    import('https://openfpcdn.io/fingerprintjs/v4')
-      .then(FingerprintJS => FingerprintJS.load())
-      .then(fp => fp.get())
-      .then(result => {
-        setFingerprint(result.visitorId);
-      })
-      .catch(err => {
-        console.error("Fingerprint generation failed:", err);
+    // Create a script tag to load the FingerprintJS library
+    const script = document.createElement('script');
+    // Use the IIFE version, which is designed to be loaded via a script tag
+    script.src = 'https://openfpcdn.io/fingerprintjs/v4/iife.min.js';
+    script.async = true;
+    
+    // This function will run once the script is loaded and executed
+    script.onload = () => {
+      // Check if the FingerprintJS global object is available
+      if (window.FingerprintJS) {
+        window.FingerprintJS.load()
+          .then(fp => fp.get())
+          .then(result => {
+            setFingerprint(result.visitorId);
+          })
+          .catch(err => {
+            console.error("Fingerprint generation failed:", err);
+            setError("Could not initialize session. Please try again.");
+          });
+      } else {
+        console.error('FingerprintJS global not found after script load.');
         setError("Could not initialize session. Please try again.");
-      });
-      
+      }
+    };
+
+    script.onerror = () => {
+      console.error("Failed to load the fingerprinting script.");
+      setError("Could not initialize session. Please try again.");
+    };
+
+    document.head.appendChild(script);
+
+    // Cleanup function to remove the script if the component unmounts
+    return () => {
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+    };
   }, [sessionError]);
 
   const handleApprove = async () => {
@@ -98,7 +123,9 @@ export async function getServerSideProps(context) {
   if (session.state === 'init' || session.state === 'loaded') {
     const { data: updatedSession, error: updateError } = await supabaseAdmin
       .from('sessions')
-      .update({ state: 'scanned', scanned_at: new Date().toISOString() })
+      .update({ state: 'scanned', scanned_at: new
+ 
+Date().toISOString() })
       .eq('token', token)
       .select()
       .single();
