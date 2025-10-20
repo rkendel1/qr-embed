@@ -1,5 +1,5 @@
 import QRCode from "qrcode";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { v4 as uuidv4 } from "uuid";
 
 export default async function handler(req, res) {
@@ -17,8 +17,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Embed token and fingerprint are required" });
   }
 
-  // 1. Verify the embed exists and is active
-  const { data: embed, error: embedError } = await supabase
+  // 1. Verify the embed exists and is active using the admin client
+  const { data: embed, error: embedError } = await supabaseAdmin
     .from('embeds')
     .select('id, is_active')
     .eq('template_token', templateToken)
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "This embed is currently inactive." });
   }
 
-  // 2. Always create a new session to ensure consistency.
+  // 2. Always create a new session using the admin client to ensure consistency.
   const sessionToken = uuidv4();
   const origin = process.env.NEXT_PUBLIC_APP_URL;
 
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
   
   const qrUrl = `${origin}/session/${sessionToken}`;
 
-  const { data: newSession, error: insertError } = await supabase
+  const { data: newSession, error: insertError } = await supabaseAdmin
     .from("sessions")
     .insert({
       token: sessionToken,
