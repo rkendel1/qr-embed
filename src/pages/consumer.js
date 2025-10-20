@@ -1,19 +1,27 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Head from 'next/head';
 
 export default function ConsumerTestPage() {
   const [embedCode, setEmbedCode] = useState('');
+  const [scriptToLoad, setScriptToLoad] = useState(null);
   const containerRef = useRef(null);
 
-  const handleLoadEmbed = () => {
-    if (!containerRef.current || !embedCode.trim()) return;
+  const handleLoadClick = () => {
+    setScriptToLoad(embedCode);
+  };
 
+  useEffect(() => {
+    if (!scriptToLoad || !containerRef.current) {
+      return;
+    }
+
+    const container = containerRef.current;
     // Clear previous embed
-    containerRef.current.innerHTML = '';
+    container.innerHTML = '';
 
-    // This is a simple way to parse the script tag string to get its attributes.
+    // This is a robust way to parse the script tag string and execute it.
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = embedCode;
+    tempDiv.innerHTML = scriptToLoad;
     const oldScript = tempDiv.querySelector('script');
 
     if (oldScript) {
@@ -24,11 +32,16 @@ export default function ConsumerTestPage() {
       }
       
       // Append the new, executable script to the container
-      containerRef.current.appendChild(newScript);
+      container.appendChild(newScript);
     } else {
-      containerRef.current.innerText = "Invalid script tag provided.";
+      container.innerText = "Invalid or missing script tag provided.";
     }
-  };
+
+    // Cleanup function to remove the script when the component unmounts or scriptToLoad changes
+    return () => {
+      container.innerHTML = '<p class="text-gray-500">Your embed will appear here.</p>';
+    };
+  }, [scriptToLoad]);
 
   return (
     <>
@@ -38,7 +51,7 @@ export default function ConsumerTestPage() {
       <div className="min-h-screen bg-gray-100 py-10">
         <header className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Embed Tester</h1>
-          <p className="text-gray-600">Paste your embed code below to load and test it.</p>
+          <p className="text-gray-600">This page simulates a third-party website consuming the embed script.</p>
         </header>
         <main className="max-w-2xl mx-auto px-4">
           <div className="bg-white rounded-lg shadow p-6">
@@ -56,7 +69,7 @@ export default function ConsumerTestPage() {
               />
             </div>
             <button
-              onClick={handleLoadEmbed}
+              onClick={handleLoadClick}
               className="w-full px-4 py-2 text-lg font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Load Embed
