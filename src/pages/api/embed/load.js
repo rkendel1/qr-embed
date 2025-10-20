@@ -1,4 +1,4 @@
-import QRCode from "qrcode";
+const QRCode = require("qrcode");
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { v4 as uuidv4 } from "uuid";
 
