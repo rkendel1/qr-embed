@@ -47,6 +47,7 @@ export default function DemoPage({ embed, origin }) {
                     defer
                     data-token={embed.template_token}
                     data-host={origin}
+                    data-user-id="user-123-demoflow"
                   />
                 </div>
               </div>
