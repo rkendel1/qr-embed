@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { templateToken, fingerprint } = req.body;
+  const { templateToken, fingerprint, userId } = req.body;
 
   if (!templateToken || !fingerprint) {
     res.status(400).json({ error: "Embed token and fingerprint are required" });
@@ -65,6 +65,7 @@ export default async function handler(req, res) {
       fingerprint: fingerprint,
       qr_url: qrUrl,
       loaded_at: new Date().toISOString(),
+      external_user_id: userId, // Store the user ID
     })
     .select()
     .single();

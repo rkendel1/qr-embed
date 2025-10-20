@@ -30,6 +30,7 @@
 
   const templateToken = script.dataset.token;
   const apiHost = script.dataset.host;
+  const userId = script.dataset.userId; // Capture the user ID
 
   if (!apiHost) {
     console.error("QR Embed: 'data-host' attribute is missing from the script tag.");
@@ -77,7 +78,7 @@
           const res = await fetch(`${apiHost}/api/embed/load`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ templateToken, fingerprint }),
+            body: JSON.stringify({ templateToken, fingerprint, userId }), // Send the user ID
           });
 
           if (!res.ok) {
