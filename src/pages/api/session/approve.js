@@ -1,6 +1,14 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export default async function handler(req, res) {
+  // Explicitly handle preflight OPTIONS request
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(204).end();
+  }
+
   if (req.method !== "POST") return res.status(405).end();
   const { token, fingerprint: mobileFingerprint } = req.body;
 
