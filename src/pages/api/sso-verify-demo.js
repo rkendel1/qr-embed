@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { serialize } from 'cookie';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // This is a mock of a user database lookup.
 const findUserById = async (userId) => {
@@ -29,12 +30,30 @@ export default async function handler(req, res) {
     return res.status(400).send('Authentication token is missing.');
   }
   
-  console.log(`[SSO Demo] Received token. In a real app, we would verify this against the client's secret.`);
-  
   try {
-    const decoded = jwt.decode(token);
+    // First, decode without verification to get the embedId
+    const decodedPayload = jwt.decode(token);
+    if (!decodedPayload || !decodedPayload.embedId) {
+      throw new Error("Invalid token: missing embedId.");
+    }
+
+    // Look up the embed to get the secret
+    const { data: embed, error: embedError } = await supabaseAdmin
+      .from('embeds')
+      .select('jwt_secret')
+      .eq('id', decodedPayload.embedId)
+      .single();
+
+    if (embedError || !embed || !embed.jwt_secret) {
+      console.error(`[SSO Demo] Could not find secret for embed ${decodedPayload.embedId}`, embedError);
+      throw new Error("Could not verify token source.");
+    }
+
+    // Now, verify the token with the correct secret
+    const decoded = jwt.verify(token, embed.jwt_secret);
+    
     if (!decoded || !decoded.userId) {
-      throw new Error("Invalid token structure.");
+      throw new Error("Invalid token structure after verification.");
     }
     const { userId } = decoded;
 

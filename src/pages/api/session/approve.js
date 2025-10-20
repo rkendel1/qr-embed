@@ -62,7 +62,10 @@ export default async function handler(req, res) {
   // Generate JWT if an external_user_id exists and a secret is configured
   if (session.external_user_id && finalSuccessUrl && embed.jwt_secret) {
     const authToken = jwt.sign(
-      { userId: session.external_user_id },
+      { 
+        userId: session.external_user_id,
+        embedId: embed.id,
+      },
       embed.jwt_secret,
       { expiresIn: '5m' } // Token is valid for 5 minutes
     );

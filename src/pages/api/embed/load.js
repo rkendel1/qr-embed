@@ -45,10 +45,13 @@ export default async function handler(req, res) {
 
   // 2. Always create a new session using the admin client to ensure consistency.
   const sessionToken = uuidv4();
-  const origin = process.env.NEXT_PUBLIC_APP_URL;
+  
+  const host = req.headers.host;
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+  const origin = `${protocol}://${host}`;
 
   if (!origin) {
-    const errorMessage = "Server configuration error: NEXT_PUBLIC_APP_URL is not set. This is required for QR code generation.";
+    const errorMessage = "Server configuration error: Could not determine origin URL.";
     console.error(errorMessage);
     res.status(500).json({ error: errorMessage });
     return;
