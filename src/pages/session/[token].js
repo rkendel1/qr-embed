@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabaseAdmin } from "@/lib/supabase-admin"; // Use admin client for server-side fetch
-import { supabase } from "@/lib/supabase"; // Keep for potential client-side use if needed
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export default function QRPage({ token, session, sessionError }) {
   const [approved, setApproved] = useState(false);
@@ -8,15 +7,16 @@ export default function QRPage({ token, session, sessionError }) {
   const [error, setError] = useState(sessionError);
 
   useEffect(() => {
-    if (sessionError) return; // Don't generate fingerprint if there's already an error
+    if (sessionError) return;
 
     async function generateFingerprint() {
       try {
-        const FingerprintJS = (await import("fingerprintjs2")).default;
-        const components = await FingerprintJS.getPromise();
-        const values = components.map(c => c.value);
-        const fp = FingerprintJS.x64hash128(values.join(""), 31);
-        setFingerprint(fp);
+        const fpPromise = import('https://openfpcdn.io/fingerprintjs/v4')
+          .then(FingerprintJS => FingerprintJS.load());
+        
+        const fp = await fpPromise;
+        const result = await fp.get();
+        setFingerprint(result.visitorId);
       } catch (err) {
         console.error("Fingerprint generation failed:", err);
         setError("Could not initialize session. Please try again.");
@@ -52,29 +52,16 @@ export default function QRPage({ token, session, sessionError }) {
       }
     } catch (error) {
       console.error("Approval failed:", error);
-      if (error.message && error.message.includes("SUPABASE_SERVICE_KEY")) {
-        setError("Could not approve connection due to a server configuration issue. Please contact support.");
-      } else {
-        setError(error.message);
-      }
+      setError(error.message || "Could not approve the connection.");
     }
   };
-
-  const getDisplayError = () => {
-    if (!error) return null;
-    if (error.includes("SUPABASE_SERVICE_KEY")) {
-      return "Could not connect due to a server configuration issue. Please contact support.";
-    }
-    return error;
-  }
-  const displayError = getDisplayError();
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="p-8 bg-white rounded-lg shadow-md text-center max-w-sm w-full">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Approve Connection?</h2>
-        {displayError ? (
-          <p className="text-red-600 bg-red-50 p-3 rounded-md">{displayError}</p>
+        {error ? (
+          <p className="text-red-600 bg-red-50 p-3 rounded-md">{error}</p>
         ) : approved ? (
           <p className="text-green-600">Approved! You can close this window.</p>
         ) : (
@@ -95,7 +82,7 @@ export async function getServerSideProps(context) {
   const { token } = context.params;
   let sessionError = null;
 
-  // Use the admin client to bypass RLS for this critical server-side lookup
+  // 1. Fetch the session using the admin client
   let { data: session, error: fetchError } = await supabaseAdmin
     .from("sessions")
     .select("*")
@@ -107,42 +94,29 @@ export async function getServerSideProps(context) {
     return { notFound: true };
   }
 
-  const origin = process.env.NEXT_PUBLIC_APP_URL;
-  if (!origin) {
-    console.error("CRITICAL: NEXT_PUBLIC_APP_URL is not set. This is required for session scanning.");
-    sessionError = "Server configuration error: App URL not specified.";
-  } else if (session.state === 'init' || session.state === 'loaded') {
-    try {
-      const scanApiUrl = `${origin}/api/session/scan`;
-
-      const res = await fetch(scanApiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to update session status.');
-      }
-      
-      // Re-fetch the session to get the updated state
-      const { data: updatedSession, error: refetchError } = await supabaseAdmin
-        .from("sessions")
-        .select("*")
-        .eq("token", token)
-        .single();
-      
-      if (refetchError || !updatedSession) {
-        throw new Error("Could not retrieve updated session information.");
-      }
-      session = updatedSession;
-
-    } catch (e) {
-      console.error("Failed during scan step:", e.message);
-      sessionError = e.message;
+  // 2. If the session is new, update its state to 'scanned' directly.
+  // This is much faster and more reliable than a self-calling API route.
+  if (session.state === 'init' || session.state === 'loaded') {
+    const { data: updatedSession, error: updateError } = await supabaseAdmin
+      .from('sessions')
+      .update({ state: 'scanned', scanned_at: new Date().toISOString() })
+      .eq('token', token)
+      .select()
+      .single();
+    
+    if (updateError || !updatedSession) {
+      console.error("Failed during scan step update:", updateError);
+      sessionError = "Could not update session status.";
+    } else {
+      session = updatedSession; // Use the updated session data
     }
   }
 
-  return { props: { token, session: JSON.parse(JSON.stringify(session)), sessionError } };
+  return { 
+    props: { 
+      token, 
+      session: JSON.parse(JSON.stringify(session)), 
+      sessionError 
+    } 
+  };
 }
