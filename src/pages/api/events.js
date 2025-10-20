@@ -12,7 +12,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Token is required" });
   }
 
-  // Use admin client to bypass RLS for the initial lookup
   const { data: initialSession, error: initialError } = await supabaseAdmin
     .from("sessions")
     .select("token, state")
@@ -53,11 +52,7 @@ export default async function handler(req, res) {
       (payload) => {
         console.log(`Real-time update for token ${token}: state ${payload.new.state}`);
         
-        let eventData = { state: payload.new.state };
-
-        if (payload.new.state === 'verified' && payload.new.resolved_success_url) {
-          eventData.successUrl = payload.new.resolved_success_url;
-        }
+        const eventData = { state: payload.new.state };
         
         res.write(`data: ${JSON.stringify(eventData)}\n\n`);
         res.flush();

@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   // Step 1: Fetch the session by token
   const { data: session, error: fetchError } = await supabaseAdmin
     .from("sessions")
-    .select("state, embed_id, resolved_success_url, fingerprint")
+    .select("state, embed_id, fingerprint")
     .eq("token", token)
     .single();
 
@@ -36,7 +36,9 @@ export default async function handler(req, res) {
 
   // Handle cases where the session is already verified
   if (session.state === 'verified') {
-    res.status(200).json({ status: "ok", successUrl: session.resolved_success_url });
+    // Can't determine the original success URL, so we don't redirect.
+    // The mobile page will show "Approved!".
+    res.status(200).json({ status: "ok", successUrl: null });
     return;
   }
 
@@ -55,8 +57,6 @@ export default async function handler(req, res) {
 
   if (embedError || !embed) {
     console.warn(`Could not find embed data (id: ${session.embed_id}) for session ${token}`);
-    // This is a server configuration issue, proceed without a success URL.
-    // The session will be verified, but no redirect will occur.
   }
 
   // Step 3: Determine the correct success URL based on routing rules
@@ -71,7 +71,6 @@ export default async function handler(req, res) {
       successUrl = embed.active_path === 'B' ? embed.success_url_b : embed.success_url_a;
     }
     
-    // Ensure URL is not an empty string
     if (successUrl && successUrl.trim()) {
       successUrl = successUrl.trim();
     } else {
@@ -86,7 +85,6 @@ export default async function handler(req, res) {
       state: "verified", 
       mobile_fingerprint: mobileFingerprint, 
       verified_at: new Date().toISOString(),
-      resolved_success_url: successUrl,
     })
     .eq("token", token);
 
