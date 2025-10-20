@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     res.status(405).end();
     return;
   }
-  const { token, fingerprint: mobileFingerprint } B= req.body;
+  const { token, fingerprint: mobileFingerprint } = req.body;
 
   if (!token || !mobileFingerprint) {
     res.status(400).json({ error: "Token and fingerprint are required" });
