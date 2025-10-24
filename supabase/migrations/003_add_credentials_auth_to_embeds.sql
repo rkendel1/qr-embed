@@ -1,0 +1,2 @@
+ALTER TABLE embeds
+ADD COLUMN credentials_enabled BOOLEAN NOT NULL DEFAULT FALSE;

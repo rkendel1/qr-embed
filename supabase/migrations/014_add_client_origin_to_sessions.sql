@@ -1,0 +1,1 @@
+ALTER TABLE "public"."sessions" ADD COLUMN "client_origin" TEXT;

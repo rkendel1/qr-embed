@@ -1,0 +1,1 @@
+ALTER TABLE "public"."users" ADD COLUMN "onboarding_completed_at" TIMESTAMPTZ;
