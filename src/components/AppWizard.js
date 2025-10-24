@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-export default function AppWizard() {
+export default function AppWizard({ isActive }) {
   const [appName, setAppName] = useState('my-awesome-app');
   const [port, setPort] = useState(3000);
   const [features, setFeatures] = useState({
@@ -46,43 +46,53 @@ export default function AppWizard() {
     setBranding(prev => ({ ...prev, copyrightText: `© ${new Date().getFullYear()} ${appName}` }));
   }, [appName]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [embedsRes, rolesRes, appsRes] = await Promise.all([
-          fetch('/api/embed/list'),
-          fetch('/api/roles/list'),
-          fetch('/api/apps/list'),
-        ]);
-        if (!embedsRes.ok || !rolesRes.ok || !appsRes.ok) throw new Error('Failed to fetch initial data');
-        
-        const embedsData = await embedsRes.json();
-        const rolesData = await rolesRes.json();
-        const appsData = await appsRes.json();
-        
-        setAllEmbeds(embedsData);
-        setAllRoles(rolesData);
-        setAllApps(appsData);
+  const fetchData = useCallback(async () => {
+    if (!isActive) return;
 
-        const auth = embedsData.filter(e => ['qr_auth', 'mobile_otp', 'magic_link', 'social_login'].includes(e.component_type) || !e.component_type);
-        const payment = embedsData.filter(e => e.component_type === 'pricing_card');
-        
-        setAuthEmbeds(auth);
-        setPaymentEmbeds(payment);
+    setLoading(true);
+    setError(null);
+    try {
+      const [embedsRes, rolesRes, appsRes] = await Promise.all([
+        fetch('/api/embed/list'),
+        fetch('/api/roles/list'),
+        fetch('/api/apps/list'),
+      ]);
+      if (!embedsRes.ok || !rolesRes.ok || !appsRes.ok) throw new Error('Failed to fetch initial data');
+      
+      const embedsData = await embedsRes.json();
+      const rolesData = await rolesRes.json();
+      const appsData = await appsRes.json();
+      
+      setAllEmbeds(embedsData);
+      setAllRoles(rolesData);
+      setAllApps(appsData);
 
-        if (auth.length > 0) {
-          setSelectedAuthEmbed(auth[0].template_token);
-        }
+      const auth = embedsData.filter(e => ['qr_auth', 'mobile_otp', 'magic_link', 'social_login'].includes(e.component_type) || !e.component_type);
+      const payment = embedsData.filter(e => e.component_type === 'pricing_card');
+      
+      setAuthEmbeds(auth);
+      setPaymentEmbeds(payment);
 
-      } catch (err) {
-        console.error("Failed to load data for wizard:", err);
-        setError("Could not load necessary data. Please refresh the page.");
-      } finally {
-        setLoading(false);
+      if (auth.length > 0 && (!selectedAuthEmbed || !auth.find(e => e.template_token === selectedAuthEmbed))) {
+        setSelectedAuthEmbed(auth[0].template_token);
       }
-    };
+
+    } catch (err) {
+      console.error("Failed to load data for wizard:", err);
+      setError("Could not load necessary data. Please refresh the page.");
+    } finally {
+      setLoading(false);
+    }
+  }, [isActive, selectedAuthEmbed]);
+
+  useEffect(() => {
     fetchData();
-  }, []);
+
+    window.addEventListener('focus', fetchData);
+    return () => {
+      window.removeEventListener('focus', fetchData);
+    };
+  }, [isActive, fetchData]);
 
   useEffect(() => {
     if (!selectedAppId) return;

@@ -1596,7 +1596,7 @@ function Dashboard() {
         <div style={{ display: dashboardTab === 'users' ? 'block' : 'none' }}><UserManagement /></div>
         <div style={{ display: dashboardTab === 'routes' ? 'block' : 'none' }}><RouteManagement /></div>
         <div style={{ display: dashboardTab === 'developer' ? 'block' : 'none' }}><DeveloperKit /></div>
-        <div style={{ display: dashboardTab === 'wizard' ? 'block' : 'none' }}><AppWizard /></div>
+        <div style={{ display: dashboardTab === 'wizard' ? 'block' : 'none' }}><AppWizard isActive={dashboardTab === 'wizard'} /></div>
       </main>
     </div>
   );
