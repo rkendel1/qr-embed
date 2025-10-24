@@ -211,7 +211,8 @@ export default function AppWizard({ isActive }) {
       const newPage = { ...page, [field]: value };
       if (field === 'path') {
         if (!newPage.path.startsWith('/')) newPage.path = '/' + newPage.path;
-        newPage.path = newPage.path.replace(/[^-a-z0-9\/]/g, '');
+        // This regex was causing the build error. It has been simplified.
+        newPage.path = newPage.path.replace(/[^-a-z0-9/]/g, '');
       }
       if (field === 'isProtected' && !value) newPage.roles = [];
       return newPage;
