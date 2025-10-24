@@ -16,7 +16,7 @@ export default function PricingPage() {
   return (
     <>
       <Head>
-        <title>Pricing - unhappyapp</title>
+        <title>Pricing - sibin</title>
       </Head>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">

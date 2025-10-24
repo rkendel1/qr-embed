@@ -32,7 +32,7 @@ function OnboardingStep1() {
   return (
     <>
       <Head>
-        <title>Onboarding: Step 1 - unhappyapp</title>
+        <title>Onboarding: Step 1 - sibin</title>
       </Head>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
         <h1 className="text-3xl font-bold text-gray-900">Onboarding - Step 1 of 3</h1>

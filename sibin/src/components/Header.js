@@ -6,7 +6,7 @@ import Can from '@/auth/Can';
 export default function Header() {
   const { isAuthenticated, user, logout } = useAuth();
   const logoUrl = "";
-  const appName = "unhappyapp";
+  const appName = "sibin";
 
   return (
     <header className="bg-white shadow-sm">
@@ -19,7 +19,7 @@ export default function Header() {
             </Link>
             <div className="space-x-4">
               <Link href="/pricing" className="text-sm font-medium text-gray-700 hover:text-indigo-600">Pricing</Link>
-              <Link href="/solutions" className="text-sm font-medium text-gray-700 hover:text-indigo-600">Solutions</Link>
+              <Link href="/soutions" className="text-sm font-medium text-gray-700 hover:text-indigo-600">Solutions</Link>
             </div>
           </div>
           <div className="space-x-4 flex items-center">
