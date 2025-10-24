@@ -57,7 +57,9 @@ cd qr-embed
     *   `NEXT_PUBLIC_SUPABASE_ANON_KEY`
     *   `SUPABASE_SERVICE_ROLE_KEY`
     *   `OTP_JWT_SECRET` (generate one with `openssl rand -hex 32`)
-    *   `NEXT_PUBLIC_APP_URL` (use `http://localhost:32100` for local development)
+    *   `NEXT_PUBLIC_APP_URL`:
+        *   For standard local development, use `http://localhost:32100`.
+        *   **If you plan to test QR codes with a mobile device on the same network**, you must use your computer's local IP address instead of `localhost`. For example: `http://192.168.1.204:32100`.
 
 ### Step 4: Install Dependencies and Run
 
