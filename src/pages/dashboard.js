@@ -1405,14 +1405,67 @@ function EditEmbedForm({ embed, allRoles, knownRoutes, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-gray-50 border-t">
       {isAuthComponent ? (
         <>
-          {/* Auth form fields */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Authentication Methods</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative flex items-start"><div className="flex h-6 items-center"><input id="qrCodeEnabled" name="qrCodeEnabled" type="checkbox" checked={formData.qrCodeEnabled} onChange={handleChange} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /></div><div className="ml-3 text-sm leading-6"><label htmlFor="qrCodeEnabled" className="font-medium text-gray-900">QR Code</label></div></div>
+              <div className="relative flex items-start"><div className="flex h-6 items-center"><input id="phoneOtpEnabled" name="phoneOtpEnabled" type="checkbox" checked={formData.phoneOtpEnabled} onChange={handleChange} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /></div><div className="ml-3 text-sm leading-6"><label htmlFor="phoneOtpEnabled" className="font-medium text-gray-900">Phone OTP</label></div></div>
+              <div className="relative flex items-start"><div className="flex h-6 items-center"><input id="credentials_enabled" name="credentials_enabled" type="checkbox" checked={formData.credentials_enabled} onChange={handleChange} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /></div><div className="ml-3 text-sm leading-6"><label htmlFor="credentials_enabled" className="font-medium text-gray-900">Email & Password</label></div></div>
+              <div className="relative flex items-start"><div className="flex h-6 items-center"><input id="magicLinkEnabled" name="magicLinkEnabled" type="checkbox" checked={formData.magicLinkEnabled} onChange={handleChange} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /></div><div className="ml-3 text-sm leading-6"><label htmlFor="magicLinkEnabled" className="font-medium text-gray-900">Magic Link</label></div></div>
+              <div className="relative flex items-start"><div className="flex h-6 items-center"><input id="google_auth_enabled" name="google_auth_enabled" type="checkbox" checked={formData.google_auth_enabled} onChange={handleChange} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /></div><div className="ml-3 text-sm leading-6"><label htmlFor="google_auth_enabled" className="font-medium text-gray-900">Google</label></div></div>
+              <div className="relative flex items-start"><div className="flex h-6 items-center"><input id="github_auth_enabled" name="github_auth_enabled" type="checkbox" checked={formData.github_auth_enabled} onChange={handleChange} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /></div><div className="ml-3 text-sm leading-6"><label htmlFor="github_auth_enabled" className="font-medium text-gray-900">GitHub</label></div></div>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">User Flow</h3>
+            <div className="space-y-4">
+              <div><label htmlFor="success_url_a" className="block text-sm font-medium text-gray-700">Success URL</label><input type="text" id="success_url_a" name="success_url_a" value={formData.success_url_a} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="/dashboard" list="known-routes-list" /><datalist id="known-routes-list">{knownRoutes.map(route => <option key={route} value={route} />)}</datalist></div>
+              <div><label htmlFor="role_id" className="block text-sm font-medium text-gray-700">Assigned Role (Optional)</label><select id="role_id" name="role_id" value={formData.role_id} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"><option value="">Default User</option>{allRoles.map(role => (<option key={role.id} value={role.id}>{role.name}</option>))}</select></div>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Single Sign-On (SSO)</h3>
+            <div className="flex items-center justify-between bg-white p-3 border rounded-md">
+              <div>
+                <label htmlFor="sso-toggle" className="font-medium text-gray-900">Enable JWT SSO</label>
+                <p className="text-sm text-gray-500">Redirect users with a secure JSON Web Token.</p>
+              </div>
+              <ToggleSwitch enabled={ssoEnabled} onChange={setSsoEnabled} />
+            </div>
+            {ssoEnabled && (
+              <div className="mt-4">
+                <label htmlFor="jwt_secret" className="block text-sm font-medium text-gray-900">Your JWT Secret</label>
+                <div className="mt-1 flex rounded-md shadow-sm">
+                  <input type={showSecret ? 'text' : 'password'} id="jwt_secret" name="jwt_secret" value={formData.jwt_secret} onChange={handleChange} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-l-md font-mono" placeholder="Generate or paste a secret" />
+                  <button type="button" onClick={() => setShowSecret(!showSecret)} className="relative -ml-px inline-flex items-center px-3 py-2 border border-gray-300 text-sm bg-gray-50">{showSecret ? 'Hide' : 'Show'}</button>
+                  <button type="button" onClick={generateSecret} className="relative -ml-px inline-flex items-center px-3 py-2 border border-gray-300 text-sm rounded-r-md bg-gray-50">Generate</button>
+                </div>
+                <div className="mt-2 bg-gray-100 p-3 rounded-md border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-700">Add to your app's .env file</p>
+                    <button type="button" onClick={copyEnvVar} className="px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">{copiedEnv ? 'Copied!' : 'Copy'}</button>
+                  </div>
+                  <div className="mt-2 bg-gray-200 p-2 rounded-md"><pre className="text-xs font-mono text-gray-800"><code>JWT_VERIFICATION_KEY={formData.jwt_secret || '<your-secret-here>'}</code></pre></div>
+                </div>
+              </div>
+            )}
+          </div>
         </>
       ) : embed.component_type === 'pricing_card' ? (
         <div>
-          {/* Pricing card form fields */}
+          <h3 className="text-lg font-medium text-gray-800 mb-4">Pricing Card Configuration</h3>
+          <div className="space-y-4">
+            <div><label htmlFor="card_title" className="block text-sm font-medium text-gray-700">Card Title</label><input type="text" id="card_title" name="card_title" value={formData.card_title} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" /></div>
+            <div><label htmlFor="card_price" className="block text-sm font-medium text-gray-700">Price</label><input type="text" id="card_price" name="card_price" value={formData.card_price} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" /></div>
+            <div><label htmlFor="card_badge" className="block text-sm font-medium text-gray-700">Badge Text</label><input type="text" id="card_badge" name="card_badge" value={formData.card_badge} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" /></div>
+            <div><label htmlFor="card_features" className="block text-sm font-medium text-gray-700">Features (one per line)</label><textarea id="card_features" name="card_features" value={formData.card_features} onChange={handleChange} rows="4" className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm font-mono"></textarea></div>
+            <div><label htmlFor="card_button_text" className="block text-sm font-medium text-gray-700">Button Text</label><input type="text" id="card_button_text" name="card_button_text" value={formData.card_button_text} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" /></div>
+            <div><label htmlFor="card_button_link" className="block text-sm font-medium text-gray-700">Button Link (Stripe, etc.)</label><input type="url" id="card_button_link" name="card_button_link" value={formData.card_button_link} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" /></div>
+            <div className="relative flex items-start"><div className="flex h-6 items-center"><input id="card_featured" name="card_featured" type="checkbox" checked={formData.card_featured} onChange={handleChange} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /></div><div className="ml-3 text-sm leading-6"><label htmlFor="card_featured" className="font-medium text-gray-900">Mark as Featured</label></div></div>
+          </div>
         </div>
       ) : embed.component_type === 'contact_form' ? (
         <div>
@@ -1423,10 +1476,10 @@ function EditEmbedForm({ embed, allRoles, knownRoutes, onSave, onCancel }) {
         <div>
           <h3 className="text-lg font-medium text-gray-800 mb-4">Founder Profile Configuration</h3>
           <div className="space-y-4">
-            <div><label htmlFor="founder_name">Name</label><input type="text" id="founder_name" name="founder_name" value={formData.founder_name} onChange={handleChange} /></div>
-            <div><label htmlFor="founder_title">Title</label><input type="text" id="founder_title" name="founder_title" value={formData.founder_title} onChange={handleChange} /></div>
-            <div><label htmlFor="founder_image_url">Image URL</label><input type="url" id="founder_image_url" name="founder_image_url" value={formData.founder_image_url} onChange={handleChange} /></div>
-            <div><label htmlFor="founder_bio">Bio</label><textarea id="founder_bio" name="founder_bio" value={formData.founder_bio} onChange={handleChange} rows="3"></textarea></div>
+            <div><label htmlFor="founder_name" className="block text-sm font-medium text-gray-700">Name</label><input type="text" id="founder_name" name="founder_name" value={formData.founder_name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" /></div>
+            <div><label htmlFor="founder_title" className="block text-sm font-medium text-gray-700">Title</label><input type="text" id="founder_title" name="founder_title" value={formData.founder_title} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" /></div>
+            <div><label htmlFor="founder_image_url" className="block text-sm font-medium text-gray-700">Image URL</label><input type="url" id="founder_image_url" name="founder_image_url" value={formData.founder_image_url} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" /></div>
+            <div><label htmlFor="founder_bio" className="block text-sm font-medium text-gray-700">Bio</label><textarea id="founder_bio" name="founder_bio" value={formData.founder_bio} onChange={handleChange} rows="3" className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"></textarea></div>
           </div>
         </div>
       ) : embed.component_type === 'chatbot' ? (
@@ -1434,8 +1487,8 @@ function EditEmbedForm({ embed, allRoles, knownRoutes, onSave, onCancel }) {
           <h3 className="text-lg font-medium text-gray-800 mb-4">Chatbot Configuration</h3>
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800"><p><strong>Note:</strong> The chatbot requires an `OPENAI_API_KEY` to be set in your server's environment variables.</p></div>
           <div className="space-y-4 mt-4">
-            <div><label htmlFor="chatbot_welcome_message">Welcome Message</label><input type="text" id="chatbot_welcome_message" name="chatbot_welcome_message" value={formData.chatbot_welcome_message} onChange={handleChange} /></div>
-            <div><label htmlFor="chatbot_initial_questions">Initial Questions (one per line)</label><textarea id="chatbot_initial_questions" name="chatbot_initial_questions" value={formData.chatbot_initial_questions} onChange={handleChange} rows="3"></textarea></div>
+            <div><label htmlFor="chatbot_welcome_message" className="block text-sm font-medium text-gray-700">Welcome Message</label><input type="text" id="chatbot_welcome_message" name="chatbot_welcome_message" value={formData.chatbot_welcome_message} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" /></div>
+            <div><label htmlFor="chatbot_initial_questions" className="block text-sm font-medium text-gray-700">Initial Questions (one per line)</label><textarea id="chatbot_initial_questions" name="chatbot_initial_questions" value={formData.chatbot_initial_questions} onChange={handleChange} rows="3" className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"></textarea></div>
           </div>
         </div>
       ) : null}
@@ -1543,7 +1596,7 @@ function Dashboard() {
         <div style={{ display: dashboardTab === 'users' ? 'block' : 'none' }}><UserManagement /></div>
         <div style={{ display: dashboardTab === 'routes' ? 'block' : 'none' }}><RouteManagement /></div>
         <div style={{ display: dashboardTab === 'developer' ? 'block' : 'none' }}><DeveloperKit /></div>
-        <div style={{ display: dashboardTab === 'wizard' ? 'block' : 'none' }}><AppWizard /></div>
+        <div style={{ display: dashboardTab === 'wizard' ? 'block' : 'none' }}><AppWizard isActive={dashboardTab === 'wizard'} /></div>
       </main>
     </div>
   );

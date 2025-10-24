@@ -15,7 +15,7 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Login - unhappyapp</title>
+        <title>Login - sibin</title>
       </Head>
       <div className="max-w-md mx-auto mt-16">
         {embedToken && apiHost ? (

@@ -10,13 +10,8 @@ function isOriginAllowed(origin) {
   if (!origin) return false;
 
   if (isDevelopment) {
-    // Allow any localhost or local IP origin in development, regardless of port.
-    try {
-      const { hostname } = new URL(origin);
-      return hostname === 'localhost' || hostname === '127.0.0.1';
-    } catch (e) {
-      return false;
-    }
+    // In development, allow any origin to make things easier.
+    return true;
   } else {
     // In production, check against the configured list of allowed origins.
     return allowedProdOrigins.includes(origin);

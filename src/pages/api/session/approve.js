@@ -112,14 +112,20 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: `Failed to approve session: ${updateError.message}` });
     }
 
-    res.status(200).json({ status: "ok", successUrl: destinationUrl });
-
+    // Broadcast the success message and wait for it to be sent before responding.
     const channel = supabaseAdmin.channel(`session-updates-${token}`);
-    channel.send({
+    const broadcastStatus = await channel.send({
       type: 'broadcast',
       event: 'VERIFICATION_SUCCESS',
       payload: { state: 'verified', successUrl: finalSuccessUrl },
     });
+
+    if (broadcastStatus !== 'ok') {
+      console.error(`[approve] Failed to broadcast success for token ${token}. Status: ${broadcastStatus}`);
+    }
+
+    res.status(200).json({ status: "ok", successUrl: destinationUrl });
+
   } catch (error) {
     console.error("[/api/session/approve] Unhandled exception:", error);
     res.status(500).json({ error: "An internal server error occurred during session approval." });
