@@ -116,7 +116,7 @@ export default async function handler(req, res) {
     const channel = supabaseAdmin.channel(`session-updates-${token}`);
     const broadcastStatus = await channel.send({
       type: 'broadcast',
-      event: 'VERIFICATION_SUCCESS',
+      event: 'STATE_CHANGE',
       payload: { state: 'verified', successUrl: finalSuccessUrl },
     });
 

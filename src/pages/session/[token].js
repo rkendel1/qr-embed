@@ -117,6 +117,13 @@ export async function getServerSideProps(context) {
       sessionError = "Could not update session status.";
     } else {
       session = updatedSession;
+      // Broadcast the 'scanned' state change
+      const channel = supabaseAdmin.channel(`session-updates-${token}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'STATE_CHANGE',
+        payload: { state: 'scanned' },
+      });
     }
   }
 

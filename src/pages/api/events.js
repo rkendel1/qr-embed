@@ -63,13 +63,15 @@ export default async function handler(req) {
       .channel(`session-updates-${token}`)
       .on(
         'broadcast',
-        { event: 'VERIFICATION_SUCCESS' },
+        { event: 'STATE_CHANGE' },
         (message) => {
           console.log(`SSE: Broadcast message received for token ${token}:`, message.payload);
           sendEvent(message.payload);
-          // Cleanly close the connection after success
-          writer.close();
-          supabaseEdge.removeChannel(channel);
+          // Cleanly close the connection only after final success
+          if (message.payload.state === 'verified') {
+            writer.close();
+            supabaseEdge.removeChannel(channel);
+          }
         }
       )
       .subscribe((status, err) => {
